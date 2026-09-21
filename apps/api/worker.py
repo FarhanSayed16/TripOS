@@ -176,6 +176,7 @@ async def check_unpaid_followups(db: AsyncSession) -> int:
     from app.models.commercial import Quote, FollowUp
     from app.models.enums import QuoteStatus
     from sqlalchemy import and_, or_, not_, select
+    from sqlalchemy.orm import selectinload
 
     now = datetime.now(timezone.utc)
     cutoff_24h = now - timedelta(hours=24)
