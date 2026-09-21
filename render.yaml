@@ -1,0 +1,105 @@
+version: "1"
+
+# TripOS Render Blueprint (Sprint M / FIX-P27-01)
+# After Blueprint create: set every sync:false secret on BOTH api and worker.
+# Redis is provisioned but UNUSED by V1 app code (DB outbox); kept optional for future rate-limit/cache.
+
+services:
+  - type: web
+    name: tripos-api
+    env: python
+    region: oregon
+    buildCommand: "cd apps/api && pip install poetry && poetry install --no-root"
+    startCommand: "cd apps/api && poetry run alembic upgrade head && poetry run uvicorn main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tripos-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: tripos-redis
+          property: connectionString
+      - key: ENV
+        value: "production"
+      - key: PROJECT_NAME
+        value: "TripOS API"
+      - key: PAYMENTS_MODE
+        value: "mock"
+      # --- secrets (set in Render dashboard) ---
+      - key: JWT_SECRET
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: BACKEND_CORS_ORIGINS
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: INVENTORY_SUPPLIERS
+        value: "mock_supplier"
+
+  - type: worker
+    name: tripos-worker
+    env: python
+    region: oregon
+    buildCommand: "cd apps/api && pip install poetry && poetry install --no-root"
+    startCommand: "cd apps/api && poetry run python worker.py"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tripos-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: tripos-redis
+          property: connectionString
+      - key: ENV
+        value: "production"
+      - key: PAYMENTS_MODE
+        value: "mock"
+      # Mirror API secrets — worker needs these for confirm + Sentry
+      - key: JWT_SECRET
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: INVENTORY_SUPPLIERS
+        value: "mock_supplier"
+
+  - type: redis
+    name: tripos-redis
+    region: oregon
+    plan: free
+    ipAllowList: []
+    # V1: unused by application code (jobs use Postgres outbox).
+    # Kept so PAYMENTS/rate-limit can adopt Redis later without reprovisioning.
+
+databases:
+  - name: tripos-db
+    region: oregon
+    plan: starter
+    postgresMajorVersion: 16
+    databaseName: tripos
+    user: tripos
