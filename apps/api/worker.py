@@ -31,6 +31,7 @@ from app.services.jobs import (
     handle_manual_refund_review,
     expire_stale_quotes,
     mark_booking_confirm_exhausted,
+    handle_followup_reminder,
 )
 
 if settings.SENTRY_DSN:
@@ -56,6 +57,7 @@ STALE_RUNNING_MINUTES = 15
 HANDLERS = {
     "booking_confirm": handle_booking_confirm,
     "manual_refund_review": handle_manual_refund_review,
+    "followup_reminder": handle_followup_reminder,
 }
 
 
