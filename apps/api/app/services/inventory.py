@@ -1,8 +1,7 @@
 import asyncio
 import time
-from typing import List
+from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException
 import structlog
 
 from app.schemas.inventory import (
@@ -17,6 +16,9 @@ from app.adapters.registry import AdapterRegistry
 from app.core.inventory_errors import InventoryRevalidateError
 from app.core.exceptions import AppError
 from app.core.config import settings
+from app.services.supplier_usage import record_live_call, get_org_live_search_policy
+from app.services import search_cache
+from app.services.l2b_survival import get_survival_state
 
 logger = structlog.get_logger()
 
@@ -28,19 +30,66 @@ async def search_inventory(
     query: SearchQuery,
     current_user: User,
     db: AsyncSession,
+    usage_source: str = "user_search",
 ) -> SearchResponse:
     """
     Orchestrates search across configured suppliers using the SupplierStrategy.
     - all: parallel fan-out (asyncio.gather)
     - primary_only: only first configured supplier
     - failover: sequential; stop after first supplier that returns offers
+    When SEARCH_CACHE_ENABLED, browse hits Redis first (no L2B meter on hit).
+    Phase 4: per-org L2B may block or cache-only live fills (cache hits still OK).
     """
     strategy = SupplierStrategy()
     mode = strategy.get_strategy()
     active_supplier_codes = await strategy.select_for_search(query)
     logger.info("inventory_search_suppliers", suppliers=active_supplier_codes, strategy=mode)
+    org_id = current_user.active_organization_id
 
-    async def _timed_search(adapter, q):
+    live_policy, l2b_summary = await get_org_live_search_policy(
+        db, org_id, usage_source=usage_source
+    )
+    # Refresh Phase 7 survival snapshot for TTL widening on cache writes
+    try:
+        await get_survival_state(db)
+    except Exception as e:
+        logger.warning("l2b_survival_refresh_failed", error=str(e))
+
+    cache_ages: List[int] = []
+    any_cache_hit = False
+
+    def _raise_throttled():
+        code = (
+            "AI_SEARCH_THROTTLED_L2B"
+            if usage_source == "ai_search"
+            else "SEARCH_THROTTLED_L2B"
+        )
+        msg = (
+            "AI search is paused while look-to-book is critical. Refine your query or try again later."
+            if usage_source == "ai_search"
+            else (
+                "Live search temporarily limited for your organization due to high "
+                "look-to-book ratio. Complete bookings or try again later."
+            )
+        )
+        raise AppError(
+            msg,
+            status_code=429,
+            error_code=code,
+            details={
+                "l2b_ratio": l2b_summary.get("l2b_ratio"),
+                "confirmed_bookings_7d": l2b_summary.get("confirmed_bookings"),
+                "looks_7d": l2b_summary.get("looks"),
+                "status": l2b_summary.get("status"),
+            },
+        )
+
+    async def _live_search_metered(adapter, q) -> List[NormalizedOffer]:
+        """Live adapter call + L2B meter (only when policy allows)."""
+        if live_policy == "block":
+            _raise_throttled()
+        if live_policy == "cache_only":
+            return []
         start_time = time.time()
         try:
             res = await adapter.search(q)
@@ -58,6 +107,70 @@ async def search_inventory(
                 error=str(e),
             )
             raise e
+        finally:
+            await record_live_call(
+                db,
+                adapter.supplier_code,
+                "search",
+                usage_source,
+                org_id=org_id,
+            )
+
+    async def _search_supplier(code: str, adapter) -> List[NormalizedOffer]:
+        """Cache → singleflight → live; meters only live adapter.search."""
+        nonlocal any_cache_hit
+
+        if settings.SEARCH_CACHE_ENABLED:
+            hit = await search_cache.get_offers(code, query)
+            if hit is not None:
+                any_cache_hit = True
+                cache_ages.append(hit.age_seconds)
+                return hit.offers
+
+            if live_policy == "cache_only":
+                logger.info(
+                    "search_cache_only_skip_live",
+                    supplier=code,
+                    org_id=str(org_id) if org_id else None,
+                    usage_source=usage_source,
+                )
+                return []
+
+            if live_policy == "block":
+                _raise_throttled()
+
+            got_lock = await search_cache.acquire_singleflight(code, query)
+            if not got_lock:
+                await asyncio.sleep(0.25)
+                hit = await search_cache.get_offers(code, query)
+                if hit is not None:
+                    any_cache_hit = True
+                    cache_ages.append(hit.age_seconds)
+                    return hit.offers
+                if live_policy == "block":
+                    _raise_throttled()
+                if live_policy == "cache_only":
+                    return []
+
+            try:
+                offers = await _live_search_metered(adapter, query)
+                await search_cache.set_offers(code, query, offers or [])
+                return offers or []
+            finally:
+                if got_lock:
+                    await search_cache.release_singleflight(code, query)
+
+        if live_policy == "cache_only":
+            logger.info(
+                "search_cache_only_no_cache_backend",
+                supplier=code,
+                org_id=str(org_id) if org_id else None,
+            )
+            return []
+        if live_policy == "block":
+            _raise_throttled()
+
+        return await _live_search_metered(adapter, query) or []
 
     def _adapters_for(codes: list[str]):
         out = []
@@ -74,24 +187,35 @@ async def search_inventory(
     all_offers: List[NormalizedOffer] = []
     runnable = _adapters_for(active_supplier_codes)
 
+    def _is_throttle_error(exc: BaseException) -> bool:
+        return isinstance(exc, AppError) and exc.error_code in (
+            "SEARCH_THROTTLED_L2B",
+            "AI_SEARCH_THROTTLED_L2B",
+        )
+
     if mode == "failover":
         for code, adapter in runnable:
             try:
-                res = await _timed_search(adapter, query)
+                res = await _search_supplier(code, adapter)
                 circuit_breaker.record_success(code)
                 if res:
                     all_offers.extend(res)
                     logger.info("failover_stop_on_success", supplier=code, offers=len(res))
                     break
+            except AppError as e:
+                if _is_throttle_error(e):
+                    raise
+                circuit_breaker.record_failure(code)
             except Exception:
                 circuit_breaker.record_failure(code)
     else:
-        # all + primary_only: parallel among selected adapters
-        tasks = [_timed_search(adapter, query) for _, adapter in runnable]
+        tasks = [_search_supplier(code, adapter) for code, adapter in runnable]
         codes = [code for code, _ in runnable]
         results = await asyncio.gather(*tasks, return_exceptions=True) if tasks else []
         for code, res in zip(codes, results):
             if isinstance(res, Exception):
+                if _is_throttle_error(res):
+                    raise res
                 circuit_breaker.record_failure(code)
             else:
                 circuit_breaker.record_success(code)
@@ -113,10 +237,17 @@ async def search_inventory(
         search_request_id=str(search_req.id),
         results_count=len(all_offers),
         offers=all_offers,
+        cache_hit=any_cache_hit,
+        cache_age_seconds=max(cache_ages) if cache_ages else None,
     )
 
 
-async def revalidate_offer(request: RevalidateRequest) -> NormalizedOffer:
+async def revalidate_offer(
+    request: RevalidateRequest,
+    db: Optional[AsyncSession] = None,
+    usage_source: str = "user_revalidate",
+    org_id=None,
+) -> NormalizedOffer:
     """Revalidates an offer via its supplier adapter. Raises AppError with stable codes."""
     try:
         adapter = AdapterRegistry.get_adapter(request.offer.supplier_code)
@@ -127,8 +258,25 @@ async def revalidate_offer(request: RevalidateRequest) -> NormalizedOffer:
                 error_code="REVALIDATE_UNSUPPORTED",
             )
 
-        return await adapter.revalidate(request.offer)
+        result = await adapter.revalidate(request.offer)
+        if db is not None:
+            await record_live_call(
+                db,
+                request.offer.supplier_code,
+                "revalidate",
+                usage_source,
+                org_id=org_id,
+            )
+        return result
     except InventoryRevalidateError as e:
+        if db is not None:
+            await record_live_call(
+                db,
+                request.offer.supplier_code,
+                "revalidate",
+                usage_source,
+                org_id=org_id,
+            )
         raise AppError(e.message, status_code=409, error_code=e.error_code.upper())
     except AppError:
         raise
@@ -136,6 +284,14 @@ async def revalidate_offer(request: RevalidateRequest) -> NormalizedOffer:
         logger.error("revalidate_adapter_missing", error=str(e))
         raise AppError("Adapter not found for this offer", status_code=500, error_code="ADAPTER_MISSING")
     except Exception as e:
+        if db is not None:
+            await record_live_call(
+                db,
+                request.offer.supplier_code,
+                "revalidate",
+                usage_source,
+                org_id=org_id,
+            )
         logger.error("revalidate_failed", error=str(e))
         raise AppError(
             f"Revalidation failed: {e}",
@@ -144,7 +300,12 @@ async def revalidate_offer(request: RevalidateRequest) -> NormalizedOffer:
         )
 
 
-async def revalidate_normalized_offer(offer: NormalizedOffer) -> NormalizedOffer:
+async def revalidate_normalized_offer(
+    offer: NormalizedOffer,
+    db: Optional[AsyncSession] = None,
+    usage_source: str = "revalidate",
+    org_id=None,
+) -> NormalizedOffer:
     """
     Service-level revalidate for payments + worker.
     Propagates InventoryRevalidateError so confirm jobs can map commercial failures.
@@ -156,21 +317,48 @@ async def revalidate_normalized_offer(offer: NormalizedOffer) -> NormalizedOffer
             status_code=400,
             error_code="REVALIDATE_UNSUPPORTED",
         )
-    return await adapter.revalidate(offer)
+    try:
+        result = await adapter.revalidate(offer)
+        if db is not None:
+            await record_live_call(
+                db, offer.supplier_code, "revalidate", usage_source, org_id=org_id
+            )
+        return result
+    except Exception:
+        if db is not None:
+            await record_live_call(
+                db, offer.supplier_code, "revalidate", usage_source, org_id=org_id
+            )
+        raise
 
 
-async def book_offer(offer: NormalizedOffer, passengers: List[dict]) -> str:
+async def book_offer(
+    offer: NormalizedOffer,
+    passengers: List[dict],
+    db: Optional[AsyncSession] = None,
+    usage_source: str = "confirm_book",
+    org_id=None,
+) -> str:
     """
     Service-level book used by background workers.
     Returns the supplier PNR.
     """
     try:
         adapter = AdapterRegistry.get_adapter(offer.supplier_code)
-        return await adapter.book(offer, passengers)
+        pnr = await adapter.book(offer, passengers)
+        if db is not None:
+            await record_live_call(
+                db, offer.supplier_code, "book", usage_source, org_id=org_id
+            )
+        return pnr
     except ValueError as e:
         logger.error("book_adapter_missing", error=str(e))
         raise AppError("Adapter not found for this offer", status_code=500, error_code="ADAPTER_MISSING")
     except Exception as e:
+        if db is not None:
+            await record_live_call(
+                db, offer.supplier_code, "book", usage_source, org_id=org_id
+            )
         logger.error("book_failed", error=str(e))
         raise AppError(f"Booking failed: {e}", status_code=502, error_code="SUPPLIER_ERROR")
 
