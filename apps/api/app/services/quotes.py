@@ -19,6 +19,38 @@ from app.core.config import settings
 logger = structlog.get_logger()
 
 
+def _quote_ttl_hours(product_type: InventoryType | str) -> int:
+    """Configurable quote validity (Phase 3)."""
+    t = product_type.value if hasattr(product_type, "value") else str(product_type)
+    if t == InventoryType.HOTEL.value or t == "hotel":
+        return max(1, int(settings.QUOTE_HOTEL_TTL_HOURS))
+    return max(1, int(settings.QUOTE_FLIGHT_TTL_HOURS))
+
+
+def _apply_fare_change_to_offer(offer_model, new_total_paise: int):
+    """Build an updated offer after agent accepts a fare-changed revalidate."""
+    new_total = new_total_paise / 100.0
+    old_total = float(offer_model.total_amount) or 1.0
+    ratio = new_total / old_total
+    refreshed = offer_model.model_copy(deep=True)
+    refreshed.total_amount = round(new_total, 2)
+    refreshed.base_amount = round(float(offer_model.base_amount) * ratio, 2)
+    refreshed.tax_amount = round(refreshed.total_amount - refreshed.base_amount, 2)
+    refreshed.is_revalidated = True
+    raw = dict(refreshed.raw_data or {})
+    raw.pop("simulate", None)
+    raw["fare_accepted"] = True
+    raw["previous_total_paise"] = int(round(old_total * 100))
+    raw["accepted_total_paise"] = new_total_paise
+    refreshed.raw_data = raw
+    ref = refreshed.supplier_reference or ""
+    if "FARE-CHG" in ref.upper():
+        refreshed.supplier_reference = (
+            ref.replace("FARE-CHG", "FARE-OK").replace("fare-chg", "FARE-OK")
+        )
+    return refreshed
+
+
 async def get_supplier_by_code(code: str, db: AsyncSession) -> Supplier:
     stmt = select(Supplier).where(Supplier.code == code)
     supplier = (await db.execute(stmt)).scalar_one_or_none()
@@ -126,11 +158,7 @@ async def create_quote(quote_in: QuoteCreate, current_user: User, db: AsyncSessi
         raise AppError("Customer not found", status_code=404, error_code="NOT_FOUND")
 
     now = datetime.now(timezone.utc)
-    valid_until = (
-        now + timedelta(hours=4)
-        if quote_type == InventoryType.FLIGHT
-        else now + timedelta(hours=12)
-    )
+    valid_until = now + timedelta(hours=_quote_ttl_hours(quote_type))
 
     quote = Quote(
         organization_id=current_user.active_organization_id,
@@ -292,6 +320,7 @@ async def refresh_quote(quote_id: str, current_user: User, db: AsyncSession) -> 
 
     from app.services.inventory import revalidate_normalized_offer
     from app.schemas.inventory import NormalizedOffer
+    from app.core.inventory_errors import InventoryRevalidateError
 
     new_item_rows: list[dict] = []
     product_type = InventoryType.FLIGHT.value
@@ -309,7 +338,36 @@ async def refresh_quote(quote_id: str, current_user: User, db: AsyncSession) -> 
         )
 
         try:
-            refreshed = await revalidate_normalized_offer(offer_model)
+            refreshed = await revalidate_normalized_offer(
+                offer_model,
+                db=db,
+                usage_source="quote_refresh",
+                org_id=quote.organization_id,
+            )
+        except InventoryRevalidateError as e:
+            # Accept new fare path: apply supplier's new total and clear fail-sim flags
+            if e.error_code == "fare_changed" and e.new_total_paise is not None:
+                refreshed = _apply_fare_change_to_offer(offer_model, e.new_total_paise)
+                logger.info(
+                    "refresh_quote_accepted_fare_change",
+                    quote_id=str(quote.id),
+                    previous_total_paise=e.previous_total_paise,
+                    new_total_paise=e.new_total_paise,
+                )
+            else:
+                raise AppError(
+                    e.message or "Inventory is no longer available or price cannot be refreshed.",
+                    status_code=409,
+                    error_code=e.error_code.upper(),
+                    details={
+                        k: v
+                        for k, v in {
+                            "previous_total_paise": e.previous_total_paise,
+                            "new_total_paise": e.new_total_paise,
+                        }.items()
+                        if v is not None
+                    },
+                ) from e
         except AppError:
             raise
         except Exception as e:
@@ -356,11 +414,7 @@ async def refresh_quote(quote_id: str, current_user: User, db: AsyncSession) -> 
         )
 
     now = datetime.now(timezone.utc)
-    valid_until = (
-        now + timedelta(hours=4)
-        if product_type == InventoryType.FLIGHT.value
-        else now + timedelta(hours=12)
-    )
+    valid_until = now + timedelta(hours=_quote_ttl_hours(product_type))
 
     new_quote = Quote(
         organization_id=quote.organization_id,
