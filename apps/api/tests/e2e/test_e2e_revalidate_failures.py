@@ -42,7 +42,11 @@ async def test_fare_change_blocks_payment(api_client: AsyncClient):
 
     pay_res = await api_client.post(f"/api/v1/quotes/{quote_id}/payment")
     assert pay_res.status_code == 409
-    assert pay_res.json().get("error_code") == "FARE_CHANGED"
+    body = pay_res.json()
+    assert body.get("error_code") == "FARE_CHANGED"
+    assert "previous_total_paise" in body
+    assert "new_total_paise" in body
+    assert body["new_total_paise"] > body["previous_total_paise"]
 
 
 @pytest.mark.asyncio

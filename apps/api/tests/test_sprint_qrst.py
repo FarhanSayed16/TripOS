@@ -114,8 +114,15 @@ async def test_failover_stops_after_first_success():
         patch("app.services.inventory.AdapterRegistry") as MockReg,
         patch("app.services.inventory.circuit_breaker") as mock_cb,
         patch("app.services.inventory.SearchRequest") as MockSR,
+        patch(
+            "app.services.inventory.get_org_live_search_policy",
+            new_callable=AsyncMock,
+            return_value=("allow", {"status": "ok", "l2b_ratio": 0}),
+        ),
+        patch("app.services.inventory.record_live_call", new_callable=AsyncMock),
     ):
         mock_settings.inventory_supplier_codes = ["mock_supplier", "tbo"]
+        mock_settings.SEARCH_CACHE_ENABLED = False
         MockStrat.return_value.get_strategy.return_value = "failover"
         MockStrat.return_value.select_for_search = AsyncMock(
             return_value=["mock_supplier", "tbo"]
