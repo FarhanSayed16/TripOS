@@ -26,7 +26,9 @@ Canonical adapter code: **`apps/api/app/adapters/`**.
 
 ## Search cache (Redis / Upstash)
 
-Skipped for V1 pilot (see prior ADR). Rate limit remains in-memory (30 searches/min/org).
+**V1 mock pilot:** cache optional (mock has no L2B contract).  
+**Live suppliers:** required — see **`architecture/look-to-book-search-cache-plan.md`** (phased L2B + shopping cache).  
+Rate limit remains 30 searches/min/org (TripOS protection); L2B metering is separate.
 
 ## Contract
 
