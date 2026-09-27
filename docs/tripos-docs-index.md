@@ -33,7 +33,7 @@ All earlier docs remain valid **detail references**. If anything conflicts, **Ma
 | `tripos-frontend-plan.md` | Pages, nav, theme, motion, FE structure — no code | Building UI structure |
 | **`tripos-master-plan.md`** | **40-phase execution checklist** | **Daily / weekly build progress** |
 | `tripos_plan_review.md` | Cross-doc review (18 issues + enhancements) — **RESOLVED into plans** | Historical; do not re-apply blindly |
-| **`phase-0/`** | **Phase 0 execution:** decisions log, commercial checklist, credential templates | **Current execution** |
+| **`phase-0/`** | **Phase 0 execution:** decisions, commercial, credentials, **`SUPPLIER_L2B_CONTRACT.md`** | **Current execution** |
 | **`phase-0-10-audit-fixes.md`** | **Audit of Phases 0–10:** gaps, bugs, prioritized fixes | **Fix before Phase 11** |
 | **`phase-11-20-audit-fixes.md`** | **Audit of Phases 11–20:** adapter→pay→worker gaps, P0 bugs | **Fix before claiming Phase 20 / starting Phase 21** |
 | **`phase-21-30-audit-fixes.md`** | **Audit of Phases 21–30** + Sprints J–N | **Current 21–30 source of truth** |
@@ -42,6 +42,10 @@ All earlier docs remain valid **detail references**. If anything conflicts, **Ma
 | `architecture/v1-api-layout.md` | Flat `app/api` accepted for V1 (vs `modules/*`) | Backend structure decisions |
 | `architecture/payments-v1-mock.md` | Mock payments mode until live Razorpay | Phase 18–19 honesty |
 | `architecture/inventory-v1-mock.md` | Mock-only suppliers / TBO gate | Phase 25 honesty |
+| **`architecture/live-inventory-readiness-plan.md`** | **Unified phases: L2B cache + must-fix hardening** | **Build this before live supplier scale** |
+| **`architecture/live-inventory-phases-0-7-explained.md`** | **Conceptual narrative: why/how Phases 0–7 help** | Product / ops / commercial readout |
+| `architecture/look-to-book-search-cache-plan.md` | L2B theory + cache design detail | Background for readiness plan |
+| `architecture/travel-tech-hardening-suggestions.md` | Short must-fix list (points to readiness plan) | Scope control |
 | **`pilot-onboarding-tracker.md`** | Phase 29 shortlist + friction log | **Sprint N — Nilesh fills agents** |
 | **`sprint-p-status.md`** | Sprint P V1 leftover board | Hosted/commercial gates |
 | **`sprint-qrst-status.md`** | Sprints Q–T engineering close | Prototype honesty + code exits |
@@ -52,7 +56,8 @@ All earlier docs remain valid **detail references**. If anything conflicts, **Ma
 | **`agent-quickstart.md`** | Agent 1-pager | Pilot training |
 | **`pilot-demo-script.md`** | 15–20 min demo outline | Live demos |
 | **`pilot-support-channel.md`** | WhatsApp support norms | Pilot ops |
-| **`ops/`** | Render/Vercel, smoke, refunds, pay-failed, Phase 28 | Hosted + reliability |
+| **`ops/`** | Render/Vercel, smoke, refunds, pay-failed, Phase 28, **`L2B_SURVIVAL_RUNBOOK.md`** | Hosted + reliability + L2B |
+
 | `failure-taxonomy.md` | Booking failure codes ↔ UI copy | Support |
 | `e2e-runs.md` | How to run E2E + green-run log | CI / local Postgres |
 
