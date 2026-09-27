@@ -185,7 +185,12 @@ async def handle_booking_confirm(payload: dict, db: AsyncSession):
             offer_obj = NormalizedOffer.model_validate(item.offer_snapshot.offer_data)
 
             try:
-                await revalidate_normalized_offer(offer_obj)
+                await revalidate_normalized_offer(
+                    offer_obj,
+                    db=db,
+                    usage_source="confirm_revalidate",
+                    org_id=quote.organization_id,
+                )
             except InventoryRevalidateError as e:
                 reason_enum = _map_failure_reason(e.error_code)
                 logger.error(
@@ -212,7 +217,13 @@ async def handle_booking_confirm(payload: dict, db: AsyncSession):
                 return
 
             logger.info("booking_item", quote_id=quote_id, item_id=str(item.id))
-            supplier_pnr = await book_offer(offer_obj, passenger_dicts)
+            supplier_pnr = await book_offer(
+                offer_obj,
+                passenger_dicts,
+                db=db,
+                usage_source="confirm_book",
+                org_id=quote.organization_id,
+            )
             pnr_list.append(supplier_pnr)
 
     except InventoryRevalidateError:
@@ -264,8 +275,19 @@ async def handle_booking_confirm(payload: dict, db: AsyncSession):
 
     # Create Commission Entry
     from app.services.commissions import create_commission_entry
+    from app.services.supplier_usage import record_live_call
+
     await db.flush() # Ensure booking has ID if newly created
     await create_commission_entry(booking_obj, db)
+
+    if first_offer_code:
+        await record_live_call(
+            db,
+            first_offer_code,
+            "confirmed",
+            "booking_confirmed",
+            org_id=quote.organization_id,
+        )
 
     await write_audit(
         db,

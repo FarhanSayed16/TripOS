@@ -48,7 +48,7 @@ async def _create_payment_link(quote: Quote, total_amount: int) -> tuple[str, st
     return await _mock_create_razorpay_link(total_amount, str(quote.id), quote.valid_until)
 
 
-async def _revalidate_quote_items(quote: Quote) -> None:
+async def _revalidate_quote_items(quote: Quote, db: AsyncSession) -> None:
     from app.core.inventory_errors import InventoryRevalidateError
 
     for item in quote.items:
@@ -68,12 +68,28 @@ async def _revalidate_quote_items(quote: Quote) -> None:
                 error_code="INVALID_SNAPSHOT",
             )
         try:
-            await revalidate_normalized_offer(offer)
+            await revalidate_normalized_offer(
+                offer,
+                db=db,
+                usage_source="payment_revalidate",
+                org_id=quote.organization_id,
+            )
         except InventoryRevalidateError as e:
+            details: dict = {}
+            prev = e.previous_total_paise
+            new = e.new_total_paise
+            if prev is None:
+                # Fall back to supplier cost on the quote item
+                prev = int(item.supplier_cost) if item.supplier_cost is not None else None
+            if prev is not None:
+                details["previous_total_paise"] = prev
+            if new is not None:
+                details["new_total_paise"] = new
             raise AppError(
                 e.message,
                 status_code=409,
                 error_code=e.error_code.upper(),
+                details=details,
             ) from e
 
 
@@ -109,7 +125,7 @@ async def create_payment_for_quote(quote_id: str, current_user: User, db: AsyncS
         raise AppError("Quote has expired.", status_code=400, error_code="QUOTE_EXPIRED")
 
     await assert_pax_gate(quote, db)
-    await _revalidate_quote_items(quote)
+    await _revalidate_quote_items(quote, db)
 
     if quote.payment and quote.payment.status == PaymentStatus.captured:
         raise AppError(
