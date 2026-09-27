@@ -76,6 +76,29 @@ async def get_admin_analytics(
     active_agents_count = len(active_agent_ids)
     avg_gmv_per_agent = total_gmv_paise / active_agents_count if active_agents_count > 0 else 0
 
+    from app.services.supplier_usage import summarize_l2b
+    from app.services.l2b_survival import get_survival_state
+    from app.models.commercial import Payment
+    from app.models.enums import PaymentStatus, BookingStatus
+
+    l2b_7d = await summarize_l2b(db, days=7)
+    survival = await get_survival_state(db, force=True)
+
+    cutoff_7d = datetime.now(timezone.utc) - timedelta(days=7)
+    # Pay captured but booking failed (money stuck / ops gap)
+    captured_failed_7d = (
+        await db.execute(
+            select(func.count(Booking.id))
+            .join(Quote, Booking.quote_id == Quote.id)
+            .join(Payment, Payment.quote_id == Quote.id)
+            .where(
+                Booking.status == BookingStatus.failed,
+                Payment.status == PaymentStatus.captured,
+                Booking.created_at >= cutoff_7d,
+            )
+        )
+    ).scalar_one()
+
     return {
         "active_orgs": active_orgs,
         "total_quotes": total_quotes,
@@ -86,7 +109,78 @@ async def get_admin_analytics(
         "total_gmv_paise": total_gmv_paise,
         "monthly_active_transacting_agents": active_agents_count,
         "avg_gmv_per_agent_paise": int(avg_gmv_per_agent),
-        "dead_letter_jobs": dead_letter_jobs
+        "dead_letter_jobs": dead_letter_jobs,
+        "l2b_7d": l2b_7d,
+        "l2b_survival": survival,
+        "payment_captured_booking_failed_7d": int(captured_failed_7d or 0),
+    }
+
+
+@router.get("/l2b")
+async def get_admin_l2b(
+    days: int = 7,
+    current_user: User = Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Rolling look-to-book ratios from supplier_usage_daily (live-inventory Phase 1)."""
+    from app.services.supplier_usage import summarize_l2b
+    from app.services.l2b_survival import get_survival_state
+
+    summary = await summarize_l2b(db, days=days)
+    survival = await get_survival_state(db, force=True, days=days)
+    return {**summary, "survival": survival}
+
+
+@router.get("/l2b/survival")
+async def get_admin_l2b_survival(
+    current_user: User = Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Phase 7 survival soft-brake status (TTL widen + warm refresh pause)."""
+    from app.services.l2b_survival import get_survival_state
+
+    return await get_survival_state(db, force=True)
+
+
+@router.get("/l2b/orgs")
+async def get_admin_l2b_orgs(
+    days: int = 7,
+    limit: int = 20,
+    current_user: User = Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Top orgs by L2B ratio (live-inventory Phase 4)."""
+    from app.services.supplier_usage import list_org_l2b_offenders
+    from app.core.config import settings
+
+    offenders = await list_org_l2b_offenders(db, days=days, limit=limit)
+    # Attach brand names when available
+    org_ids = [o["organization_id"] for o in offenders]
+    names: dict[str, str] = {}
+    if org_ids:
+        from uuid import UUID
+
+        uuid_ids = []
+        for oid in org_ids:
+            try:
+                uuid_ids.append(UUID(oid))
+            except ValueError:
+                continue
+        if uuid_ids:
+            rows = (
+                await db.execute(
+                    select(Organization).where(Organization.id.in_(uuid_ids))
+                )
+            ).scalars().all()
+            names = {str(r.id): r.brand_name for r in rows}
+    for o in offenders:
+        o["organization_name"] = names.get(o["organization_id"], "Unknown")
+
+    return {
+        "window_days": days,
+        "warn_ratio": settings.L2B_WARN_RATIO,
+        "critical_ratio": settings.L2B_CRITICAL_RATIO,
+        "orgs": offenders,
     }
 
 @router.get("/sentry-debug")

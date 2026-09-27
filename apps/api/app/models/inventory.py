@@ -1,10 +1,12 @@
 import uuid
-from typing import List, Optional
-from sqlalchemy import String, ForeignKey, Boolean
-from sqlalchemy.dialects.postgresql import JSONB
+from datetime import date
+from typing import List
+from sqlalchemy import String, ForeignKey, Boolean, Date, Integer, PrimaryKeyConstraint
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, TimestampMixin
+
 
 class Supplier(Base, TimestampMixin):
     __tablename__ = "suppliers"
@@ -54,3 +56,34 @@ class OfferSnapshot(Base, TimestampMixin):
         "QuoteItem",
         back_populates="offer_snapshot",
     )
+
+
+class SupplierUsageDaily(Base):
+    """Rolling daily rollup of live supplier calls (live-inventory readiness Phase 1)."""
+
+    __tablename__ = "supplier_usage_daily"
+    __table_args__ = (PrimaryKeyConstraint("day", "supplier_code"),)
+
+    day: Mapped[date] = mapped_column(Date, nullable=False)
+    supplier_code: Mapped[str] = mapped_column(String(50), nullable=False)
+    searches: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    revalidates: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    books: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    confirmed_bookings: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
+
+class SupplierUsageDailyOrg(Base):
+    """Per-org daily rollup for L2B brakes (live-inventory readiness Phase 4)."""
+
+    __tablename__ = "supplier_usage_daily_org"
+    __table_args__ = (PrimaryKeyConstraint("day", "organization_id", "supplier_code"),)
+
+    day: Mapped[date] = mapped_column(Date, nullable=False)
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False
+    )
+    supplier_code: Mapped[str] = mapped_column(String(50), nullable=False)
+    searches: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    revalidates: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    books: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    confirmed_bookings: Mapped[int] = mapped_column(Integer, default=0, server_default="0")

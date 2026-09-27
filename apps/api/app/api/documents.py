@@ -1,14 +1,13 @@
-"""Booking document upload / download (FIX-P34-01: auth + path safety)."""
+"""Booking document upload / download (FIX-P34-01 + Phase 6 vault)."""
 from __future__ import annotations
 
-import os
 import re
 import uuid
 from pathlib import Path
 from typing import List
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -18,12 +17,12 @@ from app.core.config import settings
 from app.models.commercial import Booking, BookingDocument
 from app.models.tenancy import User
 from app.schemas.documents import BookingDocumentResponse
+from app.services import document_storage as vault
 
 router = APIRouter(prefix="/bookings", tags=["documents"])
 doc_router = APIRouter(prefix="/documents", tags=["documents"])
 
-UPLOAD_DIR = Path("uploads")
-# Disk filenames we create: {booking_id}_{hex}_{sanitized_original}
+# Disk/object key filenames we create: {booking_id}_{hex}_{sanitized_original}
 _SAFE_STORED_NAME = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_[0-9a-f]+_.+$",
     re.IGNORECASE,
@@ -37,27 +36,13 @@ def _sanitize_original_filename(name: str | None) -> str:
 
 
 def _assert_safe_stored_filename(filename: str) -> None:
-    """Reject path traversal and unexpected shapes before touching the filesystem."""
+    """Reject path traversal and unexpected shapes before touching storage."""
     if not filename or filename != Path(filename).name:
         raise HTTPException(status_code=400, detail="Invalid filename")
     if ".." in filename or "/" in filename or "\\" in filename:
         raise HTTPException(status_code=400, detail="Invalid filename")
     if not _SAFE_STORED_NAME.match(filename):
         raise HTTPException(status_code=400, detail="Invalid filename")
-
-
-def _resolve_upload_path(stored_filename: str) -> Path:
-    _assert_safe_stored_filename(stored_filename)
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    path = (UPLOAD_DIR / stored_filename).resolve()
-    root = UPLOAD_DIR.resolve()
-    if not str(path).startswith(str(root) + os.sep) and path != root:
-        raise HTTPException(status_code=400, detail="Invalid filename")
-    return path
-
-
-def _storage_url_for(stored_filename: str) -> str:
-    return f"/api/v1/documents/{stored_filename}/download"
 
 
 @router.post("/{booking_id}/documents", response_model=BookingDocumentResponse)
@@ -68,7 +53,7 @@ async def upload_document(
     current_user: User = Depends(require_active_org),
     db: AsyncSession = Depends(get_db),
 ):
-    backend = (settings.DOCUMENT_STORAGE_BACKEND or "local").lower()
+    backend = vault.backend_name()
     if settings.is_production and backend == "local":
         raise HTTPException(
             status_code=503,
@@ -77,11 +62,20 @@ async def upload_document(
                 "Set DOCUMENT_STORAGE_BACKEND=s3|r2 with bucket credentials (FIX-P34-02)."
             ),
         )
-    if backend in ("s3", "r2") and not settings.DOCUMENT_S3_BUCKET:
-        raise HTTPException(
-            status_code=503,
-            detail="DOCUMENT_S3_BUCKET is required for s3/r2 document storage.",
-        )
+    if vault.is_object_backend():
+        if not settings.DOCUMENT_S3_BUCKET:
+            raise HTTPException(
+                status_code=503,
+                detail="DOCUMENT_S3_BUCKET is required for s3/r2 document storage.",
+            )
+        if not settings.DOCUMENT_S3_ACCESS_KEY or not settings.DOCUMENT_S3_SECRET_KEY:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "DOCUMENT_S3_ACCESS_KEY and DOCUMENT_S3_SECRET_KEY are required "
+                    "for s3/r2 document storage."
+                ),
+            )
 
     allowed = {
         m.strip().lower()
@@ -112,7 +106,6 @@ async def upload_document(
     original = _sanitize_original_filename(file.filename)
     stored_name = f"{booking_id}_{uuid.uuid4().hex}_{original}"
 
-    # Read with size cap (FIX-P34-02 retention/size)
     max_bytes = int(settings.DOCUMENT_MAX_BYTES or 10 * 1024 * 1024)
     data = await file.read()
     if len(data) > max_bytes:
@@ -121,21 +114,15 @@ async def upload_document(
             detail=f"File exceeds max size of {max_bytes} bytes",
         )
 
-    if backend == "local":
-        file_path = _resolve_upload_path(stored_name)
-        with open(file_path, "wb") as buffer:
-            buffer.write(data)
-        storage_url = _storage_url_for(stored_name)
-    else:
-        # Object storage wiring: store key as storage_url; download still org-gated.
-        # Full boto3 upload deferred until credentials exist — refuse silent fake success.
+    try:
+        storage_url = vault.put_bytes(stored_name, data, mime)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    except Exception as e:
         raise HTTPException(
-            status_code=501,
-            detail=(
-                "S3/R2 upload client not wired yet. Keep DOCUMENT_STORAGE_BACKEND=local "
-                "for dev, or finish boto3/presign in a follow-up."
-            ),
-        )
+            status_code=502,
+            detail=f"Document storage upload failed: {e}",
+        ) from e
 
     doc = BookingDocument(
         booking_id=booking_id,
@@ -171,12 +158,14 @@ async def download_document(
     filename: str,
     current_user: User = Depends(require_active_org),
     db: AsyncSession = Depends(get_db),
+    redirect: bool = False,
 ):
     """
-    FIX-P34-01: require auth + org ownership. Filename must match a stored doc.
+    FIX-P34-01: require auth + org ownership.
+    Phase 6: local FileResponse, or stream/presign from S3/R2.
     """
     _assert_safe_stored_filename(filename)
-    expected_url = _storage_url_for(filename)
+    expected_url = vault.api_download_path(filename)
 
     doc = (
         await db.execute(
@@ -190,14 +179,40 @@ async def download_document(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    file_path = _resolve_upload_path(filename)
-    if not file_path.is_file():
+    # Optional: after org auth, redirect to short-lived presigned URL (s3/r2 only)
+    if redirect and vault.is_object_backend():
+        url = vault.presigned_get_url(filename, expires_seconds=900)
+        if url:
+            return RedirectResponse(url=url, status_code=302)
+
+    if vault.backend_name() == "local":
+        try:
+            file_path = vault.local_path_for(filename)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        if not file_path.is_file():
+            raise HTTPException(status_code=404, detail="File not found")
+        return FileResponse(
+            path=file_path,
+            filename=doc.filename,
+            media_type=doc.mime_type or "application/octet-stream",
+        )
+
+    # Object backends: stream through API (keeps auth; no FE change required)
+    try:
+        data = vault.get_bytes(filename)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    if data is None:
         raise HTTPException(status_code=404, detail="File not found")
 
-    return FileResponse(
-        path=file_path,
-        filename=doc.filename,
+    headers = {
+        "Content-Disposition": f'attachment; filename="{doc.filename}"',
+    }
+    return Response(
+        content=data,
         media_type=doc.mime_type or "application/octet-stream",
+        headers=headers,
     )
 
 
@@ -231,7 +246,6 @@ async def document_share_link(
 
     digits = "".join(filter(str.isdigit, phone))
     frontend = (settings.FRONTEND_URL or "http://localhost:3000").rstrip("/")
-    # Agents open authenticated download; share message points at booking docs UI
     link = f"{frontend}/app/bookings/{doc.booking_id}"
     text = f"Your travel document ({doc.filename}) is ready: {link}"
     wa = f"https://wa.me/{digits}?text={url_quote(text)}" if digits else None
@@ -254,16 +268,13 @@ async def delete_document(
     if not doc or doc.organization_id != current_user.active_organization_id:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    # Best-effort delete of local file from storage_url
-    if doc.storage_url:
-        parts = doc.storage_url.rstrip("/").split("/")
-        if len(parts) >= 2 and parts[-1] == "download":
-            try:
-                path = _resolve_upload_path(parts[-2])
-                if path.is_file():
-                    path.unlink()
-            except HTTPException:
-                pass
+    stored = vault.filename_from_storage_url(doc.storage_url)
+    if stored:
+        try:
+            _assert_safe_stored_filename(stored)
+            vault.delete_object(stored)
+        except HTTPException:
+            pass
 
     await db.delete(doc)
     await db.commit()

@@ -33,6 +33,10 @@ from app.services.jobs import (
     mark_booking_confirm_exhausted,
     handle_followup_reminder,
 )
+from app.services.cache_refresh import (
+    handle_inventory_cache_refresh,
+    refresh_hot_routes,
+)
 
 if settings.SENTRY_DSN:
     sentry_sdk.init(
@@ -58,6 +62,7 @@ HANDLERS = {
     "booking_confirm": handle_booking_confirm,
     "manual_refund_review": handle_manual_refund_review,
     "followup_reminder": handle_followup_reminder,
+    "inventory_cache_refresh": handle_inventory_cache_refresh,
 }
 
 
@@ -247,6 +252,7 @@ async def check_dead_letter_spike(db: AsyncSession):
             sentry_sdk.capture_message(f"Dead letter spike: {len(dead_jobs)} jobs failed in last 1 hour", level="error")
 
 import os
+import time
 
 def touch_health_file():
     """Simple file touch for health check."""
@@ -264,9 +270,12 @@ async def worker_loop():
         skip_locked=_supports_skip_locked(),
         payments_mode=settings.PAYMENTS_MODE,
         stale_running_minutes=STALE_RUNNING_MINUTES,
-        poll_interval=poll_idle_seconds
+        poll_interval=poll_idle_seconds,
+        search_cache_refresh=settings.SEARCH_CACHE_REFRESH_ENABLED,
+        search_cache_enabled=settings.SEARCH_CACHE_ENABLED,
     )
     loop_count = 0
+    last_cache_refresh_mono = 0.0
     while True:
         try:
             touch_health_file()
@@ -288,6 +297,24 @@ async def worker_loop():
                     await check_dead_letter_spike(db)
                         
                     await db.commit()
+
+                # Phase 5: periodic hot-route cache refresh
+                refresh_interval = max(
+                    15, int(settings.SEARCH_CACHE_REFRESH_INTERVAL_SECONDS or 60)
+                )
+                now_mono = time.monotonic()
+                if (
+                    settings.SEARCH_CACHE_ENABLED
+                    and settings.SEARCH_CACHE_REFRESH_ENABLED
+                    and (now_mono - last_cache_refresh_mono) >= refresh_interval
+                ):
+                    try:
+                        await refresh_hot_routes(db)
+                    except Exception as refresh_err:
+                        logger.error(
+                            "cache_refresh_loop_error", error=str(refresh_err)
+                        )
+                    last_cache_refresh_mono = now_mono
 
                 job_processed = await poll_outbox(db)
                 if not job_processed:

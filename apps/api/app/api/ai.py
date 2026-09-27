@@ -19,6 +19,7 @@ from app.schemas.ai import (
 from app.schemas.inventory import InventoryType, PassengerQuery, SearchQuery
 from app.services.ai_copilot import format_quote_draft, parse_travel_intent
 from app.services.inventory import search_inventory
+from app.core.exceptions import AppError
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -125,7 +126,9 @@ async def search_and_draft_endpoint(
         intent = ParsedIntent(**intent_dict)
         sq = _intent_to_search_query(intent)
 
-        search_resp = await search_inventory(sq, current_user, db)
+        search_resp = await search_inventory(
+            sq, current_user, db, usage_source="ai_search"
+        )
         offers = search_resp.offers
 
         draft_dict = await format_quote_draft(offers, intent_dict)
@@ -136,6 +139,8 @@ async def search_and_draft_endpoint(
             search_results=[o.model_dump(mode="json") for o in offers],
             draft=draft,
         )
+    except AppError:
+        raise
     except HTTPException:
         raise
     except ValueError as e:

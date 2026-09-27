@@ -47,6 +47,33 @@ class Settings(BaseSettings):
     INVENTORY_SUPPLIERS: str = "mock_supplier"
     SUPPLIER_STRATEGY: str = "all"  # all | primary_only | failover
 
+    # Look-to-book thresholds (provisional Phase 0 defaults until Sahil overrides)
+    L2B_WARN_RATIO: float = 80.0
+    L2B_CRITICAL_RATIO: float = 120.0
+    # Phase 4 — per-org brakes
+    L2B_THROTTLE_MIN_CONFIRMED: int = 1  # critical + confirmed < this → 429
+    L2B_ORG_CACHE_ONLY: bool = False  # warn/critical → cache hits only (no live miss fill)
+    L2B_AI_BLOCK_ON_CRITICAL: bool = True  # AI cannot fire live when org L2B critical
+    # Phase 7 — platform survival soft-brakes when global L2B is critical
+    L2B_SURVIVAL_ENABLED: bool = True
+    L2B_SURVIVAL_TTL_MULTIPLIER: float = 2.0
+    L2B_SURVIVAL_TTL_CAP_SECONDS: int = 900  # 15 min
+    L2B_SURVIVAL_PAUSE_WARM_REFRESH: bool = True
+    # Phase 2 shopping cache — off by default; enable in staging with Redis up
+    SEARCH_CACHE_ENABLED: bool = False
+    SEARCH_CACHE_TTL_SECONDS: int = 120
+    # Phase 5 — background refresh + TTL bands
+    SEARCH_CACHE_REFRESH_ENABLED: bool = False
+    SEARCH_CACHE_REFRESH_INTERVAL_SECONDS: int = 60
+    SEARCH_CACHE_HOT_TTL_SECONDS: int = 90
+    SEARCH_CACHE_WARM_TTL_SECONDS: int = 600
+    SEARCH_CACHE_TOP_N: int = 50
+    SEARCH_CACHE_HOT_TOP_N: int = 10  # first N of top list use hot TTL
+
+    # Quote validity (Phase 3 — configurable; tighten for live later)
+    QUOTE_FLIGHT_TTL_HOURS: int = 4
+    QUOTE_HOTEL_TTL_HOURS: int = 12
+
     # Hierarchy: master override share of sub-agent commission (basis points). Default 2000 = 20%.
     MASTER_COMMISSION_OVERRIDE_BPS: int = 2000
 

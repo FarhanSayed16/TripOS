@@ -58,6 +58,9 @@ class SearchResponse(BaseModel):
     search_request_id: str
     results_count: int
     offers: List[NormalizedOffer]
+    # Phase 2 shopping cache metadata (indicative browse)
+    cache_hit: bool = False
+    cache_age_seconds: Optional[int] = None
 
 
 class RevalidateRequest(BaseModel):

@@ -59,6 +59,7 @@ async def search_hotels(
 async def revalidate(
     request: RevalidateRequest,
     user: User = Depends(require_active_org),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Revalidates an offer before finalizing a quote or booking.
@@ -66,4 +67,9 @@ async def revalidate(
     if not user.active_organization_id:
         raise HTTPException(status_code=403, detail="User is not assigned to an active organization")
         
-    return await revalidate_offer(request)
+    return await revalidate_offer(
+        request,
+        db=db,
+        usage_source="user_revalidate",
+        org_id=user.active_organization_id,
+    )

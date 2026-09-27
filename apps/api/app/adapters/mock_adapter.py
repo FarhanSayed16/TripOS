@@ -148,9 +148,17 @@ class MockAdapter(BaseAdapter):
             )
 
         if "FARE-CHG" in ref or simulate == "fare_changed":
+            prev_paise = int(round(float(offer.total_amount) * 100))
+            new_paise = int(round(prev_paise * 1.08))  # +8% for agent UX testing
             raise InventoryRevalidateError(
                 "fare_changed",
-                f"Fare changed. Previous total was {offer.currency} {offer.total_amount:.2f}.",
+                (
+                    f"Fare changed. Previous total was {offer.currency} "
+                    f"{offer.total_amount:.2f}; new fare is {offer.currency} "
+                    f"{new_paise / 100:.2f}."
+                ),
+                previous_total_paise=prev_paise,
+                new_total_paise=new_paise,
             )
 
         if "TIMEOUT" in ref or simulate in ("timeout", "supplier_timeout"):
