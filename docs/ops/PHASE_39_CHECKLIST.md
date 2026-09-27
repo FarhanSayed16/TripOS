@@ -9,6 +9,25 @@
 - [ ] Render: API + worker healthy; Postgres storage
 - [ ] Webhooks: Razorpay failures (if live)
 
+## Search cache
+
+**Live suppliers:** follow `architecture/look-to-book-search-cache-plan.md` + `architecture/live-inventory-readiness-plan.md` Phases 2 + 5 + **7**.
+
+| Flag | Effect |
+|---|---|
+| `SEARCH_CACHE_ENABLED=true` | Browse hits Redis; miss → live + set |
+| `SEARCH_CACHE_REFRESH_ENABLED=true` | Worker refreshes top-N hot routes on an interval |
+| `SEARCH_CACHE_REFRESH_ENABLED=false` | **Pause background refresher** (ops kill switch) |
+| `L2B_SURVIVAL_*` | Auto soft-brakes when platform L2B critical — see `L2B_SURVIVAL_RUNBOOK.md` |
+
+**Pause refresher (ops):** set `SEARCH_CACHE_REFRESH_ENABLED=false` on the worker and restart (or redeploy). User browse cache still works if `SEARCH_CACHE_ENABLED=true`.
+
+**L2B survival (auto):** when platform L2B is critical, TTL widens (×2, cap 15m) and warm refresh pauses. Admin red banner + Sentry. Full playbook: [`L2B_SURVIVAL_RUNBOOK.md`](./L2B_SURVIVAL_RUNBOOK.md).
+
+**Manual refresh:** enqueue outbox job `type=inventory_cache_refresh` (optional payload: `top_n`, `hot_n`, `days`).
+
+Mock pilot may run without cache; do not skip cache once real TBO/TripJack traffic starts.
+
 ## Metrics (minimum)
 
 | Signal | Where |
@@ -17,10 +36,8 @@
 | Dead-letter spike | `jobs_outbox` status=dead + Failures UI |
 | Webhook errors | Sentry + payments logs |
 | Search rate-limit 429 | structlog `rate_limit_exceeded` |
+| Platform L2B / survival | Admin banner + Analytics + `GET /admin/l2b/survival` |
 
-## Search cache
-
-**Decision (Sprint T):** still **skipped** for V1/V2 pilot — freshness > cache. Revisit if supplier latency becomes a cost issue.
 
 ## Worker concurrency
 

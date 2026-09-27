@@ -28,6 +28,8 @@ $env:TRIPOS_WEB_URL="https://<web>.vercel.app"
 4. `FRONTEND_URL` = Vercel production URL.
 5. `ENV=production`, strong `JWT_SECRET`, `ENCRYPTION_KEY` (Fernet).
 6. `AI_COPILOT_ENABLED=false` unless intentionally enabling AI with `OPENAI_API_KEY`.
+7. **Document vault (Phase 6):** `DOCUMENT_STORAGE_BACKEND=r2` (or `s3`) + bucket/keys/endpoint.  
+   `local` is **503 in production** — tickets must not live on ephemeral disk.
 
 ## Smoke checklist
 
@@ -38,12 +40,26 @@ $env:TRIPOS_WEB_URL="https://<web>.vercel.app"
 | Web health | Frontend home loads | |
 | Login | Agent login against hosted API | |
 | Mock pay loop | Search → quote → send → payment (mock) → webhook or offline pay → worker confirms | |
+| Document vault | Upload ticket on confirmed booking → download via authenticated `/documents/.../download` | |
+| Doc prod guard | With `ENV=production` + `DOCUMENT_STORAGE_BACKEND=local` → upload returns **503** | |
 | Sentry | Platform admin `GET /api/v1/admin/sentry-debug` → event in Sentry | |
 | Failures UI | `/admin/failures` loads | |
 
 ## Redis note
 
-`tripos-redis` is in the Blueprint but **unused by V1 application code** (outbox is Postgres). Safe to leave on free plan; remove later if cost matters.
+`tripos-redis` powers shopping search cache (Phases 2 + 5) when `SEARCH_CACHE_ENABLED=true`. Outbox remains Postgres. Enable refresh with `SEARCH_CACHE_REFRESH_ENABLED=true` only after cache is on.
+
+## Document vault (R2 / S3)
+
+| Env | Notes |
+|---|---|
+| `DOCUMENT_STORAGE_BACKEND` | `local` (dev) · `r2` · `s3` |
+| `DOCUMENT_S3_BUCKET` | Required for r2/s3 |
+| `DOCUMENT_S3_ENDPOINT` | R2: `https://<accountid>.r2.cloudflarestorage.com` |
+| `DOCUMENT_S3_ACCESS_KEY` / `SECRET` | R2 API token |
+| `DOCUMENT_S3_REGION` | Often `auto` for R2 |
+
+Upload writes to `tripos/documents/{stored_filename}`. Download stays org-gated on the API (`storage_url` = `/api/v1/documents/{name}/download`). Optional `?redirect=true` returns a short-lived presigned redirect on object backends.
 
 ## After smoke
 
