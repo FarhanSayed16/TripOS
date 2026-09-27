@@ -82,6 +82,23 @@ Real secrets go in **local** `secrets/` (gitignored) — never commit keys.
 
 ---
 
+## 0.3b Live-inventory L2B contract — ENGINEERING CLOSED (2026-09-25)
+
+Separate from commercial Phase 0: this gate unlocks **live-inventory readiness Phase 1+** (meters, cache). Full pack: `SUPPLIER_L2B_CONTRACT.md`.
+
+| Item | Locked provisional | Sahil status |
+|---|---|---|
+| Look definition (our meters) | Live `search` + `revalidate`; not cache hits; not book | PENDING override |
+| `L2B_WARN_RATIO` | **80** | PENDING |
+| `L2B_CRITICAL_RATIO` | **120** | PENDING |
+| Shopping API | Assume **none** until confirmed | PENDING |
+| Env placeholders | In `apps/api/.env.example` | Done |
+
+**Exit for readiness Phase 0:** warn/critical known → **met** (provisional).  
+**Still required before heavy live prod search:** Sahil fills real clauses or explicitly accepts Farhan defaults.
+
+---
+
 ## 0.4 Exit criteria
 
 | Gate | Status |
@@ -89,7 +106,8 @@ Real secrets go in **local** `secrets/` (gitignored) — never commit keys.
 | 0.2 answers written | Partial — template + proposals; awaiting Nilesh |
 | Credential pack folder exists | **Yes** — templates + gitignored `secrets/` |
 | Engineering locks confirmed | **Yes** |
-| Phase 0 fully DONE | **No** — until Nilesh commercial + at least supplier choice path clear |
+| Live-inventory L2B Phase 0 (provisional) | **Yes** — 2026-09-25 |
+| Phase 0 fully DONE (commercial) | **No** — until Nilesh commercial + at least supplier choice path clear |
 
 ### Parallel execution rule (agreed)
 
@@ -107,6 +125,7 @@ Real secrets go in **local** `secrets/` (gitignored) — never commit keys.
 | Farhan | 2026-09-16 | Sprint C: re-stated pilot defaults as engineering assumptions; commercial still PENDING Nilesh |
 | Farhan | 2026-09-16 | **Sprint I:** handoff pack + live Razorpay code path shipped; awaiting Nilesh sign-off + test keys + one capture |
 | Farhan | 2026-09-18 | **Sprint N:** pilot pack published (tracker, quickstart, demo script, support channel); still awaiting Nilesh agent shortlist + commercial sign-off |
+| Farhan | 2026-09-25 | **Live-inventory Phase 0:** `SUPPLIER_L2B_CONTRACT.md` + provisional L2B 80/120; Sahil still fills contract truth |
 | Nilesh | | |
 | Sahil | | |
 
