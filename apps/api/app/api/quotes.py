@@ -83,7 +83,7 @@ async def api_get_quote(
 ):
     """Fetch a full quote by ID (for agents only)."""
     stmt = select(Quote).options(
-        selectinload(Quote.items),
+        selectinload(Quote.items).selectinload(QuoteItem.offer_snapshot),
         selectinload(Quote.passengers),
         selectinload(Quote.booking),
     ).where(
@@ -273,6 +273,28 @@ async def api_quote_fare_rules(
         raise HTTPException(status_code=404, detail="No offer on quote")
     offer = NormalizedOffer.model_validate(quote.items[0].offer_snapshot.offer_data)
     return await get_fare_rules_for_offer(offer)
+
+
+@router.put("/{quote_id}/items/{item_id}/extras", response_model=QuoteResponse)
+async def api_update_item_extras(
+    quote_id: str,
+    item_id: str,
+    body: dict,
+    current_user: User = Depends(require_active_org),
+    db: AsyncSession = Depends(get_db),
+):
+    """FC Phase 6 — set baggage/meal/seat/SSR lines on a quote item."""
+    from app.schemas.ancillaries import QuoteItemExtrasUpdate
+    from app.services.ancillaries import update_quote_item_extras
+    from app.services.fx import enrich_quote_items_money
+
+    parsed = QuoteItemExtrasUpdate.model_validate(body)
+    quote = await update_quote_item_extras(
+        quote_id, item_id, parsed, current_user, db
+    )
+    data = QuoteResponse.model_validate(quote)
+    data.items = enrich_quote_items_money(quote)
+    return data
 
 
 @router.get("/{quote_id}/refunds")

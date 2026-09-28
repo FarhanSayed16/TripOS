@@ -65,3 +65,34 @@ async def api_razorpay_webhook(
         raise HTTPException(status_code=400, detail="Invalid webhook JSON")
 
     return await process_razorpay_webhook(payload, db)
+
+
+@router.post("/schedule-change")
+async def api_schedule_change_webhook(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    FC Phase 7 — ingest supplier schedule-change notifications.
+    Optional shared secret via header X-TripOS-Webhook-Secret when configured.
+    """
+    from app.schemas.servicing import ScheduleChangeIngest
+    from app.services.schedule_change import ingest_schedule_change
+
+    secret = settings.FC_SCHEDULE_CHANGE_WEBHOOK_SECRET
+    if secret:
+        provided = request.headers.get("x-tripos-webhook-secret")
+        if not provided or not hmac.compare_digest(provided, secret):
+            raise HTTPException(status_code=401, detail="Invalid webhook secret")
+    elif settings.is_production:
+        raise HTTPException(status_code=503, detail="Schedule-change webhook secret required")
+
+    body = await request.json()
+    payload = ScheduleChangeIngest.model_validate(body)
+    event = await ingest_schedule_change(payload, db)
+    return {
+        "status": "ok",
+        "event_id": str(event.id),
+        "booking_id": str(event.booking_id) if event.booking_id else None,
+        "notified": event.notified,
+    }

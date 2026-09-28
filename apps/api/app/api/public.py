@@ -15,6 +15,7 @@ router = APIRouter(prefix="/public", tags=["public"])
 @router.get("/quotes/{token}", response_model=PublicQuoteResponse)
 async def api_get_public_quote(
     token: str,
+    locale: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Sanitized quote by public token — no auth. Never exposes agent cost."""
@@ -34,10 +35,16 @@ async def api_get_public_quote(
         raise HTTPException(status_code=404, detail="Quote not found")
 
     from app.services.fx import fx_quote_from_quote_row, paise_money_display
+    from app.services.i18n import normalize_locale, resolve_locale
 
     charge = quote.charge_currency or settings.CHARGE_CURRENCY or "INR"
     display = quote.display_currency or charge
     fx = fx_quote_from_quote_row(quote)
+
+    resolved_locale = await resolve_locale(
+        query_locale=locale,
+        organization=quote.organization,
+    )
 
     sanitized_items = []
     for item in quote.items:
@@ -68,11 +75,18 @@ async def api_get_public_quote(
 
     charge_note = None
     if display.upper() != charge.upper():
-        charge_note = (
-            f"Amounts shown in {display}. Payment is collected in {charge} "
-            f"(settle currency). Rate as of "
-            f"{quote.fx_as_of.isoformat() if quote.fx_as_of else 'quote creation'}."
-        )
+        if resolved_locale == "hi":
+            charge_note = (
+                f"राशि {display} में दिखाई गई है। भुगतान {charge} में लिया जाता है। "
+                f"दर दिनांक: "
+                f"{quote.fx_as_of.isoformat() if quote.fx_as_of else 'कोट निर्माण'}।"
+            )
+        else:
+            charge_note = (
+                f"Amounts shown in {display}. Payment is collected in {charge} "
+                f"(settle currency). Rate as of "
+                f"{quote.fx_as_of.isoformat() if quote.fx_as_of else 'quote creation'}."
+            )
 
     return PublicQuoteResponse(
         id=quote.id,
@@ -90,6 +104,7 @@ async def api_get_public_quote(
         fx_as_of=quote.fx_as_of,
         fx_source=quote.fx_source,
         charge_note=charge_note,
+        locale=normalize_locale(resolved_locale),
     )
 
 from app.models.tenancy import OrganizationDomain

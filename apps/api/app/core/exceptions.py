@@ -21,10 +21,28 @@ class AppError(Exception):
         super().__init__(self.message)
 
 async def app_error_handler(request: Request, exc: AppError):
-    logger.error("app_error", message=exc.message, error_code=exc.error_code, status_code=exc.status_code)
+    from app.services.i18n import localize_error, normalize_locale, parse_accept_language
+
+    locale = getattr(request.state, "locale", None)
+    if not locale:
+        q = request.query_params.get("locale")
+        locale = normalize_locale(q) if q else None
+    if not locale:
+        locale = parse_accept_language(request.headers.get("accept-language")) or "en"
+
+    message = localize_error(exc.error_code, locale, exc.message)
+    logger.error(
+        "app_error",
+        message=exc.message,
+        localized_message=message,
+        error_code=exc.error_code,
+        status_code=exc.status_code,
+        locale=locale,
+    )
     content = {
         "error_code": exc.error_code,
-        "message": exc.message,
+        "message": message,
+        "locale": locale,
         "request_id": correlation_id.get(),
     }
     content.update(exc.details)

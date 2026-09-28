@@ -121,6 +121,26 @@ class Settings(BaseSettings):
     CHARGE_CURRENCY: str = "INR"
     FX_PROVIDER_ENABLED: bool = False  # optional scheduled pull; manual rates are default
 
+    # FC Phase 5 — i18n
+    DEFAULT_LOCALE: str = "en"
+    SUPPORTED_LOCALES: str = "en,hi"
+
+    # FC Phase 6 — rich offers (mock on; live adapters opt-in via capabilities)
+    FC_ANCILLARIES_ENABLED: bool = True
+    FC_SEAT_MAP_ENABLED: bool = True
+
+    # FC Phase 7 — servicing / richer content (gated until Phase 0 matrix says yes)
+    FC_REISSUE_ENABLED: bool = True  # mock reissue path; live needs supplier yes
+    FC_NDC_ENABLED: bool = False  # Phase 0 gate — off until contracted
+    FC_LCC_ENABLED: bool = False  # Phase 0 gate — off until contracted
+    FC_AI_PREFERENCES_ENABLED: bool = True  # opt-in org.ai_preferences on AI search
+    FC_SCHEDULE_CHANGE_WEBHOOK_SECRET: Optional[str] = None
+
+    # FC Phase 8 — partner / B2C-facing API
+    FC_PARTNER_API_ENABLED: bool = True
+    FC_PARTNER_DEFAULT_RATE_LIMIT: int = 60
+    FC_PARTNER_WEBHOOK_TIMEOUT_SECONDS: float = 5.0
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     @property
