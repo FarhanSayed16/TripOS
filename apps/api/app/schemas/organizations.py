@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.models.enums import OrgStatus, UserRole
 
 class UserNestedResponse(BaseModel):
@@ -16,6 +16,7 @@ class OrganizationBase(BaseModel):
     logo_url: Optional[str] = None
     primary_color: Optional[str] = None
     status: OrgStatus
+    preferred_currency: str = "INR"
 
 class OrganizationResponse(OrganizationBase):
     id: uuid.UUID
@@ -27,6 +28,7 @@ class OrganizationUpdate(BaseModel):
     brand_name: Optional[str] = None
     logo_url: Optional[str] = None
     primary_color: Optional[str] = None
+    preferred_currency: Optional[str] = Field(None, min_length=3, max_length=3)
 
 class MemberResponse(BaseModel):
     role: UserRole

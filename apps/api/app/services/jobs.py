@@ -19,6 +19,74 @@ from app.services.audit import write_audit
 logger = structlog.get_logger()
 
 
+async def _notify_agent_booking(
+    db: AsyncSession,
+    quote: Quote,
+    *,
+    confirmed: bool,
+    pnr: str | None = None,
+    reason: str | None = None,
+) -> None:
+    """Best-effort email to quote creator (FC Phase 2)."""
+    try:
+        from app.models.tenancy import User
+        from app.services.email import notify_booking_confirmed, notify_booking_failed
+
+        user = await db.get(User, quote.created_by_user_id)
+        if not user or not user.email:
+            return
+        if confirmed:
+            await notify_booking_confirmed(
+                user.email, quote_id=str(quote.id), pnr=pnr or "—"
+            )
+        else:
+            await notify_booking_failed(
+                user.email, quote_id=str(quote.id), reason=reason or "unknown"
+            )
+    except Exception as e:
+        logger.warning("booking_notify_failed", quote_id=str(quote.id), error=str(e))
+
+
+async def _vault_ticket_from_url(
+    db: AsyncSession,
+    *,
+    booking: Booking,
+    organization_id,
+    url: str,
+    pnr: str,
+) -> None:
+    """Download supplier ticket URL and store via document vault (FC Phase 1)."""
+    import uuid as uuid_mod
+    from pathlib import PurePosixPath
+
+    import httpx
+
+    from app.models.commercial import BookingDocument
+    from app.services import document_storage
+
+    async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+        resp = await client.get(url)
+        resp.raise_for_status()
+        data = resp.content
+        content_type = resp.headers.get("content-type", "application/pdf").split(";")[0]
+
+    ext = PurePosixPath(url.split("?")[0]).suffix or ".pdf"
+    if len(ext) > 8:
+        ext = ".pdf"
+    stored = f"{uuid_mod.uuid4().hex}{ext}"
+    storage_url = document_storage.put_bytes(stored, data, content_type)
+    doc = BookingDocument(
+        booking_id=booking.id,
+        organization_id=organization_id,
+        type="ticket",
+        filename=f"ticket-{pnr}{ext}",
+        storage_url=storage_url,
+        mime_type=content_type or "application/pdf",
+    )
+    db.add(doc)
+    logger.info("ticket_vaulted", booking_id=str(booking.id), storage_url=storage_url)
+
+
 def _map_failure_reason(code: str) -> BookingFailureReason:
     """Map adapter/error codes onto BookingFailureReason enum."""
     normalized = (code or "").lower().strip()
@@ -49,6 +117,9 @@ async def _upsert_failed_booking(
         quote.booking.organization_id = quote.organization_id
         if supplier_code:
             quote.booking.supplier_code = supplier_code
+        await _notify_agent_booking(
+            db, quote, confirmed=False, reason=reason.value
+        )
         return quote.booking
     booking = Booking(
         quote_id=quote.id,
@@ -59,6 +130,9 @@ async def _upsert_failed_booking(
     )
     db.add(booking)
     quote.booking = booking
+    await _notify_agent_booking(
+        db, quote, confirmed=False, reason=reason.value
+    )
     return booking
 
 
@@ -175,6 +249,7 @@ async def handle_booking_confirm(payload: dict, db: AsyncSession):
     ]
 
     pnr_list: list[str] = []
+    last_book_result = None
 
     # V1: typically one item per quote; sequential book without compensate cancel
     try:
@@ -217,14 +292,15 @@ async def handle_booking_confirm(payload: dict, db: AsyncSession):
                 return
 
             logger.info("booking_item", quote_id=quote_id, item_id=str(item.id))
-            supplier_pnr = await book_offer(
+            book_result = await book_offer(
                 offer_obj,
                 passenger_dicts,
                 db=db,
                 usage_source="confirm_book",
                 org_id=quote.organization_id,
             )
-            pnr_list.append(supplier_pnr)
+            last_book_result = book_result
+            pnr_list.append(book_result.pnr)
 
     except InventoryRevalidateError:
         raise
@@ -254,11 +330,18 @@ async def handle_booking_confirm(payload: dict, db: AsyncSession):
             if first_offer_code:
                 break
 
+    ticket_numbers = list(last_book_result.ticket_numbers) if last_book_result else []
+    supplier_booking_id = (
+        last_book_result.supplier_booking_id if last_book_result else None
+    )
+
     if quote.booking:
         quote.booking.status = BookingStatus.confirmed
         quote.booking.supplier_pnr = primary_pnr
         quote.booking.failure_reason = None
         quote.booking.organization_id = quote.organization_id
+        quote.booking.supplier_booking_id = supplier_booking_id
+        quote.booking.ticket_numbers = ticket_numbers or None
         if first_offer_code:
             quote.booking.supplier_code = first_offer_code
         booking_obj = quote.booking
@@ -269,6 +352,8 @@ async def handle_booking_confirm(payload: dict, db: AsyncSession):
             status=BookingStatus.confirmed,
             supplier_pnr=primary_pnr,
             supplier_code=first_offer_code,
+            supplier_booking_id=supplier_booking_id,
+            ticket_numbers=ticket_numbers or None,
         )
         db.add(booking_obj)
         quote.booking = booking_obj
@@ -289,15 +374,46 @@ async def handle_booking_confirm(payload: dict, db: AsyncSession):
             org_id=quote.organization_id,
         )
 
+    # FC Phase 1 — pull ticket document into vault when supplier returns a URL
+    if last_book_result and last_book_result.ticket_document_url:
+        try:
+            await _vault_ticket_from_url(
+                db,
+                booking=booking_obj,
+                organization_id=quote.organization_id,
+                url=last_book_result.ticket_document_url,
+                pnr=primary_pnr,
+            )
+        except Exception as e:
+            logger.warning(
+                "ticket_vault_upload_failed",
+                quote_id=quote_id,
+                error=str(e),
+                url=last_book_result.ticket_document_url,
+            )
+
     await write_audit(
         db,
         organization_id=quote.organization_id,
         action="booking.confirmed",
         entity_type="quote",
         entity_id=str(quote.id),
-        metadata={"supplier_pnr": primary_pnr, "all_pnrs": pnr_list},
+        metadata={
+            "supplier_pnr": primary_pnr,
+            "all_pnrs": pnr_list,
+            "ticket_numbers": ticket_numbers,
+            "supplier_booking_id": supplier_booking_id,
+        },
     )
-    logger.info("booking_confirm_done", quote_id=quote_id, pnr=primary_pnr)
+    await _notify_agent_booking(
+        db, quote, confirmed=True, pnr=primary_pnr
+    )
+    logger.info(
+        "booking_confirm_done",
+        quote_id=quote_id,
+        pnr=primary_pnr,
+        ticket_numbers=ticket_numbers,
+    )
 
 
 async def handle_manual_refund_review(payload: dict, db: AsyncSession):

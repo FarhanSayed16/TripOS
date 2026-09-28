@@ -98,3 +98,51 @@ async def send_password_reset_email(email: str, token: str):
     except Exception as e:
         logger.error("Failed to send reset email to %s: %s", email, e)
         return False
+
+
+async def send_booking_status_email(
+    email: str,
+    *,
+    subject: str,
+    body_html: str,
+    body_text: str,
+) -> bool:
+    """FC Phase 2 — notify agent on booking confirm / fail."""
+    resend, api_key = _get_resend()
+    if not api_key or resend is None:
+        logger.info("========== MOCK EMAIL ==========")
+        logger.info("To: %s", email)
+        logger.info("Subject: %s", subject)
+        logger.info("%s", body_text)
+        logger.info("================================")
+        return True
+    try:
+        r = resend.Emails.send({
+            "from": "TripOS <onboarding@resend.dev>",
+            "to": email,
+            "subject": subject,
+            "html": body_html,
+        })
+        logger.info("Sent booking status email to %s: %s", email, r)
+        return True
+    except Exception as e:
+        logger.error("Failed to send booking status email to %s: %s", email, e)
+        return False
+
+
+async def notify_booking_confirmed(email: str, *, quote_id: str, pnr: str) -> bool:
+    subject = f"TripOS booking confirmed — PNR {pnr}"
+    text = f"Your booking for quote {quote_id} is confirmed. Supplier PNR: {pnr}."
+    html = f"<p>Your booking for quote <strong>{quote_id}</strong> is confirmed.</p><p>Supplier PNR: <strong>{pnr}</strong>.</p>"
+    return await send_booking_status_email(email, subject=subject, body_html=html, body_text=text)
+
+
+async def notify_booking_failed(email: str, *, quote_id: str, reason: str) -> bool:
+    subject = f"TripOS booking failed — quote {quote_id}"
+    text = f"Booking failed for quote {quote_id}. Reason: {reason}. Check Admin Failures / quote detail."
+    html = (
+        f"<p>Booking failed for quote <strong>{quote_id}</strong>.</p>"
+        f"<p>Reason: <strong>{reason}</strong>.</p>"
+        f"<p>Open the quote in TripOS for next steps (refund may be required if payment was captured).</p>"
+    )
+    return await send_booking_status_email(email, subject=subject, body_html=html, body_text=text)

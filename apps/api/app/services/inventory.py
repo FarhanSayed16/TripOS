@@ -93,19 +93,33 @@ async def search_inventory(
         start_time = time.time()
         try:
             res = await adapter.search(q)
+            duration_ms = int((time.time() - start_time) * 1000)
             logger.info(
                 "supplier_search_success",
                 supplier=adapter.supplier_code,
-                duration_ms=int((time.time() - start_time) * 1000),
+                duration_ms=duration_ms,
             )
+            try:
+                from app.services.supplier_metrics import supplier_metrics
+
+                supplier_metrics.record(adapter.supplier_code, duration_ms, ok=True)
+            except Exception:
+                pass
             return res
         except Exception as e:
+            duration_ms = int((time.time() - start_time) * 1000)
             logger.error(
                 "supplier_search_error",
                 supplier=adapter.supplier_code,
-                duration_ms=int((time.time() - start_time) * 1000),
+                duration_ms=duration_ms,
                 error=str(e),
             )
+            try:
+                from app.services.supplier_metrics import supplier_metrics
+
+                supplier_metrics.record(adapter.supplier_code, duration_ms, ok=False)
+            except Exception:
+                pass
             raise e
         finally:
             await record_live_call(
@@ -221,8 +235,24 @@ async def search_inventory(
                 circuit_breaker.record_success(code)
                 all_offers.extend(res)
 
-    all_offers.sort(key=lambda o: o.total_amount)
-    all_offers = all_offers[:50]
+    from app.services.offer_aggregation import SortKey, aggregate_offers
+
+    try:
+        sort_key = SortKey(query.sort or "recommended")
+    except ValueError:
+        sort_key = SortKey.recommended
+
+    all_offers, agg_meta = aggregate_offers(
+        all_offers,
+        sort=sort_key,
+        max_stops=query.max_stops,
+        airlines=query.airlines,
+        max_price=query.max_price,
+        depart_time_from=query.depart_time_from,
+        depart_time_to=query.depart_time_to,
+        limit=50,
+        dedupe=bool(query.dedupe),
+    )
 
     search_req = SearchRequest(
         organization_id=current_user.active_organization_id,
@@ -233,12 +263,61 @@ async def search_inventory(
     await db.commit()
     await db.refresh(search_req)
 
+    # Track last search counts for admin (process-local)
+    try:
+        from app.services.supplier_metrics import record_offer_counts
+
+        record_offer_counts(agg_meta.get("supplier_counts") or {})
+    except Exception:
+        pass
+
+    # FC Phase 4 — attach display money without mutating supplier fares
+    from app.services.fx import (
+        attach_offer_money,
+        get_fx_quote,
+        resolve_display_currency,
+    )
+
+    charge_currency = settings.CHARGE_CURRENCY or "INR"
+    display_currency = charge_currency
+    fx_meta = None
+    try:
+        display_currency = await resolve_display_currency(
+            db, user=current_user, organization_id=org_id
+        )
+        if display_currency != charge_currency:
+            fx_meta = await get_fx_quote(
+                db, base=charge_currency, quote=display_currency
+            )
+        await attach_offer_money(
+            all_offers, fx=fx_meta, display_currency=display_currency
+        )
+    except Exception as e:
+        logger.warning("fx_attach_failed", error=str(e))
+        display_currency = charge_currency
+        await attach_offer_money(
+            all_offers, fx=None, display_currency=charge_currency
+        )
+
     return SearchResponse(
         search_request_id=str(search_req.id),
         results_count=len(all_offers),
         offers=all_offers,
         cache_hit=any_cache_hit,
         cache_age_seconds=max(cache_ages) if cache_ages else None,
+        supplier_counts=agg_meta.get("supplier_counts"),
+        airline_facets=agg_meta.get("airline_facets"),
+        aggregation={
+            "before_dedupe": agg_meta.get("before_dedupe"),
+            "after_dedupe": agg_meta.get("after_dedupe"),
+            "deduped_away": agg_meta.get("deduped_away"),
+            "sort": agg_meta.get("sort"),
+        },
+        charge_currency=charge_currency,
+        display_currency=display_currency,
+        fx_rate=float(fx_meta.rate) if fx_meta else None,
+        fx_as_of=fx_meta.as_of.isoformat() if fx_meta and fx_meta.as_of else None,
+        fx_source=fx_meta.source if fx_meta else None,
     )
 
 
@@ -338,19 +417,23 @@ async def book_offer(
     db: Optional[AsyncSession] = None,
     usage_source: str = "confirm_book",
     org_id=None,
-) -> str:
+):
     """
     Service-level book used by background workers.
-    Returns the supplier PNR.
+    Returns BookResult (PNR + optional ticket refs).
     """
+    from app.schemas.booking_result import BookResult
+
     try:
         adapter = AdapterRegistry.get_adapter(offer.supplier_code)
-        pnr = await adapter.book(offer, passengers)
+        result = await adapter.book(offer, passengers)
+        if isinstance(result, str):
+            result = BookResult.from_pnr(result)
         if db is not None:
             await record_live_call(
                 db, offer.supplier_code, "book", usage_source, org_id=org_id
             )
-        return pnr
+        return result
     except ValueError as e:
         logger.error("book_adapter_missing", error=str(e))
         raise AppError("Adapter not found for this offer", status_code=500, error_code="ADAPTER_MISSING")

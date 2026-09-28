@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import QuoteStatus, BookingStatus, BookingFailureReason
 from app.schemas.inventory import NormalizedOffer
+from app.schemas.fx import MoneyDisplay
 
 
 # --- Quote Passengers ---
@@ -41,6 +42,7 @@ class QuoteItemResponse(BaseModel):
     agent_markup: int
     platform_fee: int
     customer_total: int
+    money: Optional[MoneyDisplay] = None
 
 
 class PublicQuoteItemResponse(BaseModel):
@@ -50,6 +52,7 @@ class PublicQuoteItemResponse(BaseModel):
     customer_total: int
     # Inject sanitized offer data (title, description, type, currency) from the snapshot
     sanitized_offer_data: dict = Field(default_factory=dict)
+    money: Optional[MoneyDisplay] = None
 
 
 # --- Quotes ---
@@ -78,6 +81,12 @@ class QuoteResponse(BaseModel):
     items: List[QuoteItemResponse]
     passengers: List[QuotePassengerResponse] = Field(default_factory=list)
     booking: Optional[QuoteBookingSummary] = None
+    # FC Phase 4
+    charge_currency: str = "INR"
+    display_currency: str = "INR"
+    fx_rate: Optional[float] = None
+    fx_as_of: Optional[datetime] = None
+    fx_source: Optional[str] = None
 
 
 class PublicQuoteResponse(BaseModel):
@@ -92,6 +101,13 @@ class PublicQuoteResponse(BaseModel):
     agency_logo_url: Optional[str] = None
     payment_status: Optional[str] = None
     booking_status: Optional[str] = None
+    # FC Phase 4
+    charge_currency: str = "INR"
+    display_currency: str = "INR"
+    fx_rate: Optional[float] = None
+    fx_as_of: Optional[datetime] = None
+    fx_source: Optional[str] = None
+    charge_note: Optional[str] = None
 
 
 # --- Messaging ---
