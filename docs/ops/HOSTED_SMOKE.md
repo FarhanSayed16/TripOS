@@ -49,6 +49,23 @@ $env:TRIPOS_WEB_URL="https://<web>.vercel.app"
 
 `tripos-redis` powers shopping search cache (Phases 2 + 5) when `SEARCH_CACHE_ENABLED=true`. Outbox remains Postgres. Enable refresh with `SEARCH_CACHE_REFRESH_ENABLED=true` only after cache is on.
 
+## FC Phase 1 — Live supplier spine (staging)
+
+| Step | Action | Pass? |
+|---|---|---|
+| Secrets | `FC_STAGING_SECRETS_CHECKLIST.md` filled on Render | |
+| Migrate | `alembic upgrade head` (ticket refs on bookings) | |
+| Live flag | `TBO_LIVE_ENABLED=true` + TBO_* creds | |
+| Suppliers | `INVENTORY_SUPPLIERS=tbo` (or include tbo) | |
+| Cache | `SEARCH_CACHE_ENABLED=true` + Redis | |
+| Vault | `DOCUMENT_STORAGE_BACKEND=r2` (or s3) | |
+| Search | Agent search → badges show `tbo · live` (not simulated) | |
+| Book | Pay → worker confirm → PNR **without** `SIM-TBO` prefix (sandbox may still be test PNR) | |
+| Tickets | If supplier returns document URL → `booking_documents` row | |
+| L2B | Cache hit does not increment looks; miss does | |
+
+Idempotency review: `docs/ops/FC_PHASE1_IDEMPOTENCY_AUDIT.md`.
+
 ## Document vault (R2 / S3)
 
 | Env | Notes |

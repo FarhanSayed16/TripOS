@@ -2,8 +2,9 @@
 
 **Copy to:** `secrets/01-supplier-sandbox.md`  
 **Filled by:** Sahil / Nilesh  
-**Needed before:** Master Plan Phase 25 (real adapter); mock works until then  
-**L2B / shopping clauses:** also fill [`../SUPPLIER_L2B_CONTRACT.md`](../SUPPLIER_L2B_CONTRACT.md) (live-inventory readiness Phase 0)
+**Needed before:** FC Phase 1 live spine / Master Plan Phase 25  
+**L2B / shopping clauses:** also fill [`../SUPPLIER_L2B_CONTRACT.md`](../SUPPLIER_L2B_CONTRACT.md)  
+**Capability matrix (FC Phase 0):** also fill [`../FC_CAPABILITY_MATRIX.md`](../FC_CAPABILITY_MATRIX.md)
 
 ---
 

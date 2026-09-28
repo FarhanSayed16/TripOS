@@ -126,8 +126,21 @@ Separate from commercial Phase 0: this gate unlocks **live-inventory readiness P
 | Farhan | 2026-09-16 | **Sprint I:** handoff pack + live Razorpay code path shipped; awaiting Nilesh sign-off + test keys + one capture |
 | Farhan | 2026-09-18 | **Sprint N:** pilot pack published (tracker, quickstart, demo script, support channel); still awaiting Nilesh agent shortlist + commercial sign-off |
 | Farhan | 2026-09-25 | **Live-inventory Phase 0:** `SUPPLIER_L2B_CONTRACT.md` + provisional L2B 80/120; Sahil still fills contract truth |
+| Farhan | 2026-09-28 | **FC Phase 0:** capability matrix + staging secrets templates; engineering default primary = TBO; B2B/B2C + INR charge + EN/HI locked |
 | Nilesh | | |
 | Sahil | | |
+
+---
+
+## 0.3c Flight Commerce Phase 0 (2026-09-28)
+
+| Item | Status |
+|---|---|
+| Capability matrix template | **Done** — `FC_CAPABILITY_MATRIX.md` (values PENDING) |
+| FC Phase 0 lock doc | **Done** — `FC_PHASE_0_LOCK.md` |
+| Staging secrets checklist | **Done** — `docs/ops/FC_STAGING_SECRETS_CHECKLIST.md` |
+| Primary supplier | Engineering default **TBO**; Nilesh confirm PENDING |
+| Charge currency / locales / B2C split | Locked in matrix §3 |
 
 ---
 
