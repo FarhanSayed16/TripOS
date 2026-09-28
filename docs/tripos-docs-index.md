@@ -44,6 +44,12 @@ All earlier docs remain valid **detail references**. If anything conflicts, **Ma
 | `architecture/inventory-v1-mock.md` | Mock-only suppliers / TBO gate | Phase 25 honesty |
 | **`architecture/live-inventory-readiness-plan.md`** | **Unified phases: L2B cache + must-fix hardening** | **Build this before live supplier scale** |
 | **`architecture/live-inventory-phases-0-7-explained.md`** | **Conceptual narrative: why/how Phases 0–7 help** | Product / ops / commercial readout |
+| **`architecture/flight-api-features-gap-plan.md`** | **Top 25 Flight API checklist × TripOS gap** | Sir checklist / narrative |
+| **`architecture/flight-commerce-implementation-plan.md`** | **FC Phases 0–8 build plan (surfaces + acceptance)** | **Execute flight commerce here** |
+| `architecture/FC_SINGLE_SUPPLIER_WAIVER.md` | TBO-only live pilot until 2nd feed | FC Phase 3 |
+| `architecture/hotel-parity-status.md` | Hotel mock-gated vs flights | FC Phase 3 |
+| `phase-0/FC_CAPABILITY_MATRIX.md` | Supplier capability yes/no for FC | FC Phase 0 |
+| `ops/FC_STAGING_SECRETS_CHECKLIST.md` | Staging env names for live spine | FC Phase 0–1 |
 | `architecture/look-to-book-search-cache-plan.md` | L2B theory + cache design detail | Background for readiness plan |
 | `architecture/travel-tech-hardening-suggestions.md` | Short must-fix list (points to readiness plan) | Scope control |
 | **`pilot-onboarding-tracker.md`** | Phase 29 shortlist + friction log | **Sprint N — Nilesh fills agents** |
