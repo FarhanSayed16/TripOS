@@ -1,5 +1,5 @@
 import jwt
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -25,6 +25,7 @@ __all__ = [
 
 
 async def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db),
 ) -> User:
@@ -70,6 +71,19 @@ async def get_current_user(
     user.active_organization_id = (
         user.memberships[0].organization_id if user.memberships else None
     )
+
+    # FC Phase 5 — refine locale from user/org after auth
+    try:
+        from app.services.i18n import resolve_locale
+
+        request.state.locale = await resolve_locale(
+            query_locale=request.query_params.get("locale"),
+            accept_language=request.headers.get("accept-language"),
+            user=user,
+            db=db,
+        )
+    except Exception:
+        pass
 
     return user
 

@@ -1,8 +1,9 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from sqlalchemy.orm import selectinload
+import uuid
 
 from app.db.session import get_db
 from app.models.tenancy import User
@@ -13,6 +14,11 @@ from app.schemas.bookings import (
     BookingResponse,
     BookingQuoteSummary,
     failure_label,
+)
+from app.schemas.servicing import (
+    BookingChangeResponse,
+    ReissueQuoteRequest,
+    ReissueConfirmRequest,
 )
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
@@ -90,3 +96,64 @@ async def list_bookings(
 
     bookings = (await db.execute(stmt)).scalars().all()
     return [_to_booking_response(b) for b in bookings]
+
+
+@router.get("/{booking_id}", response_model=BookingResponse)
+async def get_booking(
+    booking_id: uuid.UUID,
+    current_user: User = Depends(require_active_org),
+    db: AsyncSession = Depends(get_db),
+):
+    stmt = (
+        select(Booking)
+        .join(Quote)
+        .options(
+            selectinload(Booking.quote).selectinload(Quote.customer),
+            selectinload(Booking.quote).selectinload(Quote.items),
+        )
+        .where(
+            Booking.id == booking_id,
+            Quote.organization_id == current_user.active_organization_id,
+        )
+    )
+    booking = (await db.execute(stmt)).scalar_one_or_none()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return _to_booking_response(booking)
+
+
+@router.post("/{booking_id}/changes/quote", response_model=BookingChangeResponse)
+async def api_quote_reissue(
+    booking_id: uuid.UUID,
+    payload: ReissueQuoteRequest,
+    current_user: User = Depends(require_active_org),
+    db: AsyncSession = Depends(get_db),
+):
+    """FC Phase 7 — quote a post-booking change (reissue/exchange)."""
+    from app.services.reissue import quote_reissue
+
+    return await quote_reissue(booking_id, payload, current_user, db)
+
+
+@router.post("/changes/{change_id}/confirm", response_model=BookingChangeResponse)
+async def api_confirm_reissue(
+    change_id: uuid.UUID,
+    payload: ReissueConfirmRequest,
+    current_user: User = Depends(require_active_org),
+    db: AsyncSession = Depends(get_db),
+):
+    """FC Phase 7 — confirm a quoted change (or mark manual SOP)."""
+    from app.services.reissue import confirm_reissue
+
+    return await confirm_reissue(change_id, payload, current_user, db)
+
+
+@router.get("/{booking_id}/changes", response_model=List[BookingChangeResponse])
+async def api_list_booking_changes(
+    booking_id: uuid.UUID,
+    current_user: User = Depends(require_active_org),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.reissue import list_booking_changes
+
+    return await list_booking_changes(booking_id, current_user, db)

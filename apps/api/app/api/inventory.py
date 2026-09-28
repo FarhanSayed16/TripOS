@@ -85,3 +85,29 @@ async def get_fare_rules(
     from app.services.fare_rules import get_fare_rules_for_offer
 
     return await get_fare_rules_for_offer(request.offer)
+
+
+@router.post("/ancillaries")
+async def get_ancillaries(
+    request: dict,
+    user: User = Depends(require_active_org),
+):
+    """FC Phase 6 — list baggage/meal/SSR options for an offer."""
+    from app.schemas.ancillaries import OfferExtrasRequest
+    from app.services.ancillaries import fetch_ancillaries
+
+    body = OfferExtrasRequest.model_validate(request)
+    return await fetch_ancillaries(body.offer)
+
+
+@router.post("/seat-map")
+async def get_seat_map(
+    request: dict,
+    user: User = Depends(require_active_org),
+):
+    """FC Phase 6 — seat map for an offer (when supported)."""
+    from app.schemas.ancillaries import OfferExtrasRequest
+    from app.services.ancillaries import fetch_seat_map
+
+    body = OfferExtrasRequest.model_validate(request)
+    return await fetch_seat_map(body.offer)

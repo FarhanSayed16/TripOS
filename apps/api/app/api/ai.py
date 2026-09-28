@@ -103,10 +103,14 @@ def _intent_to_search_query(intent: ParsedIntent) -> SearchQuery:
 async def parse_intent_endpoint(
     request: ParseIntentRequest,
     current_user: User = Depends(require_active_org),
+    db: AsyncSession = Depends(get_db),
 ):
     check_ai_enabled()
     try:
-        intent = await parse_travel_intent(request.message)
+        from app.services.i18n import resolve_locale
+
+        locale = await resolve_locale(user=current_user, db=db)
+        intent = await parse_travel_intent(request.message, locale=locale)
         return intent
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -122,7 +126,10 @@ async def search_and_draft_endpoint(
 ):
     check_ai_enabled()
     try:
-        intent_dict = await parse_travel_intent(request.message)
+        from app.services.i18n import resolve_locale
+
+        locale = await resolve_locale(user=current_user, db=db)
+        intent_dict = await parse_travel_intent(request.message, locale=locale)
         intent = ParsedIntent(**intent_dict)
         sq = _intent_to_search_query(intent)
 
@@ -131,7 +138,7 @@ async def search_and_draft_endpoint(
         )
         offers = search_resp.offers
 
-        draft_dict = await format_quote_draft(offers, intent_dict)
+        draft_dict = await format_quote_draft(offers, intent_dict, locale=locale)
         draft = QuoteDraft(**draft_dict)
 
         return SearchAndDraftResponse(

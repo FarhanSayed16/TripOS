@@ -56,6 +56,26 @@ async def update_my_organization(
             org.preferred_currency = normalize_currency(data.preferred_currency)
         except ValueError as e:
             raise AppError(str(e), status_code=400, error_code="INVALID_CURRENCY") from e
+    if data.default_locale is not None:
+        from app.services.i18n import SUPPORTED_LOCALES, normalize_locale
+
+        loc = normalize_locale(data.default_locale)
+        if loc not in SUPPORTED_LOCALES:
+            raise AppError(
+                "Unsupported locale",
+                status_code=400,
+                error_code="INVALID_LOCALE",
+            )
+        org.default_locale = loc
+    if data.deal_codes is not None:
+        cleaned = [
+            str(c).strip().upper()
+            for c in data.deal_codes
+            if c and str(c).strip()
+        ]
+        org.deal_codes = cleaned
+    if data.ai_preferences is not None:
+        org.ai_preferences = data.ai_preferences
         
     await db.commit()
     await db.refresh(org)
@@ -255,6 +275,76 @@ async def verify_domain(
         "domain": domain_record.domain,
         "is_verified": True,
         "method": "force" if force else "dns_txt",
+    }
+
+
+@router.get("/me/white-label-checklist")
+async def white_label_checklist(
+    current_user: User = Depends(require_org_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    FC Phase 7 — production custom-domain / white-label readiness checklist.
+    """
+    from app.core.config import settings
+
+    stmt = select(Organization).where(Organization.id == current_user.active_organization_id)
+    org = (await db.execute(stmt)).scalar_one_or_none()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    domains_stmt = select(OrganizationDomain).where(
+        OrganizationDomain.organization_id == org.id
+    )
+    domains = (await db.execute(domains_stmt)).scalars().all()
+    verified = [d for d in domains if d.is_verified]
+    pending = [d for d in domains if not d.is_verified]
+
+    steps = [
+        {
+            "id": "brand",
+            "label": "Brand name + primary color set",
+            "done": bool(org.brand_name) and bool(org.primary_color),
+        },
+        {
+            "id": "logo",
+            "label": "Logo URL uploaded",
+            "done": bool(org.logo_url),
+        },
+        {
+            "id": "domain_added",
+            "label": "Custom domain added",
+            "done": len(domains) > 0,
+        },
+        {
+            "id": "dns_txt",
+            "label": "DNS TXT verification passed",
+            "done": len(verified) > 0,
+        },
+        {
+            "id": "production_env",
+            "label": "Running in production environment",
+            "done": bool(settings.is_production),
+        },
+    ]
+    return {
+        "organization_id": str(org.id),
+        "brand_name": org.brand_name,
+        "complete": all(s["done"] for s in steps if s["id"] != "production_env")
+        and (len(verified) > 0),
+        "steps": steps,
+        "domains": [
+            {
+                "id": str(d.id),
+                "domain": d.domain,
+                "is_verified": d.is_verified,
+                "txt_hint": f"tripos-verify={d.verification_token}" if d.verification_token else None,
+            }
+            for d in domains
+        ],
+        "pending_count": len(pending),
+        "verified_count": len(verified),
+        "doc": "docs/ops/FC_WHITE_LABEL_CHECKLIST.md",
     }
 
 class SubAgentCreate(BaseModel):

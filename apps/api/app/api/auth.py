@@ -80,6 +80,7 @@ def _user_response(user: User, org_status: str | None = None) -> UserResponse:
         org_status=org_status,
         is_platform_admin=bool(user.is_platform_admin),
         preferred_currency=getattr(user, "preferred_currency", None),
+        locale=getattr(user, "locale", None),
     )
 
 
@@ -266,7 +267,7 @@ async def update_me_preferences(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """FC Phase 4 — optional user display-currency override (null clears)."""
+    """FC Phase 4/5 — optional user display-currency and locale overrides (null clears)."""
     stmt = (
         select(User)
         .options(selectinload(User.memberships).selectinload(OrganizationMember.organization))
@@ -284,6 +285,21 @@ async def update_me_preferences(
                 user.preferred_currency = normalize_currency(data.preferred_currency)
             except ValueError as e:
                 raise AppError(str(e), status_code=400, error_code="INVALID_CURRENCY") from e
+    if "locale" in data.model_fields_set:
+        if data.locale is None or data.locale == "":
+            user.locale = None
+        else:
+            from app.services.i18n import SUPPORTED_LOCALES, normalize_locale
+            from app.core.exceptions import AppError
+
+            loc = normalize_locale(data.locale)
+            if loc not in SUPPORTED_LOCALES:
+                raise AppError(
+                    "Unsupported locale",
+                    status_code=400,
+                    error_code="INVALID_LOCALE",
+                )
+            user.locale = loc
     await db.commit()
     await db.refresh(user)
     user.active_organization_id = getattr(current_user, "active_organization_id", None)

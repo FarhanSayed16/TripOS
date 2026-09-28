@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-from typing import List
+from typing import List, Optional
 import uuid
 
 from app.api.deps import get_db, require_platform_admin
@@ -369,6 +369,28 @@ async def settle_commissions(
     await db.commit()
     return {"status": "success", "settled_amount_paise": total_settled}
 
+
+@router.get("/commissions/statement.csv")
+async def export_commission_statement(
+    org_id: Optional[str] = None,
+    current_user: User = Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """FC Phase 7 — download settle statement CSV for one org or all."""
+    import uuid as uuid_mod
+    from fastapi.responses import Response
+    from app.services.commissions import export_commission_statement_csv
+
+    oid = uuid_mod.UUID(org_id) if org_id else None
+    csv_body = await export_commission_statement_csv(db, org_id=oid)
+    filename = f"commission-statement-{org_id or 'all'}.csv"
+    return Response(
+        content=csv_body,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 from app.schemas.wallet import CommissionRuleResponse, CommissionRuleCreate
 
 @router.get("/commission-rules", response_model=List[CommissionRuleResponse])
@@ -652,4 +674,142 @@ async def admin_seed_fx_rates(
     return {
         "seeded": len(rows),
         "pairs": [f"{r.base_currency}/{r.quote_currency}" for r in rows],
+    }
+
+
+# --- FC Phase 8 — Partner apps ---
+
+from app.schemas.partner import PartnerAppCreate, PartnerAppUpdate, PartnerAppResponse
+from app.models.partner import PartnerApp
+from app.services.partner_auth import create_partner_app, rotate_partner_key
+from app.services.supplier_usage import summarize_org_l2b
+from datetime import datetime, timezone
+
+
+def _partner_response(app: PartnerApp, *, api_key: str | None = None) -> PartnerAppResponse:
+    return PartnerAppResponse(
+        id=app.id,
+        organization_id=app.organization_id,
+        name=app.name,
+        key_prefix=app.key_prefix,
+        env=app.env,
+        webhook_url=app.webhook_url,
+        scopes=list(app.scopes or []),
+        rate_limit_per_minute=app.rate_limit_per_minute,
+        ip_allowlist=app.ip_allowlist,
+        is_active=app.is_active,
+        last_used_at=app.last_used_at,
+        rotated_at=app.rotated_at,
+        created_at=app.created_at,
+        api_key=api_key,
+        webhook_secret=app.webhook_secret if api_key else None,
+    )
+
+
+@router.get("/partners", response_model=List[PartnerAppResponse])
+async def list_partner_apps(
+    current_user: User = Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    rows = (
+        await db.execute(
+            select(PartnerApp)
+            .where(PartnerApp.deleted_at.is_(None))
+            .order_by(PartnerApp.created_at.desc())
+        )
+    ).scalars().all()
+    return [_partner_response(r) for r in rows]
+
+
+@router.post("/partners", response_model=PartnerAppResponse)
+async def create_partner_app_admin(
+    body: PartnerAppCreate,
+    current_user: User = Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    app, raw_key = await create_partner_app(
+        db,
+        organization_id=body.organization_id,
+        name=body.name,
+        env=body.env,
+        webhook_url=body.webhook_url,
+        rate_limit_per_minute=body.rate_limit_per_minute,
+        scopes=body.scopes,
+        ip_allowlist=body.ip_allowlist,
+    )
+    return _partner_response(app, api_key=raw_key)
+
+
+@router.patch("/partners/{partner_id}", response_model=PartnerAppResponse)
+async def update_partner_app_admin(
+    partner_id: uuid.UUID,
+    body: PartnerAppUpdate,
+    current_user: User = Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    app = await db.get(PartnerApp, partner_id)
+    if not app or app.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Partner app not found")
+    if body.name is not None:
+        app.name = body.name
+    if body.webhook_url is not None:
+        app.webhook_url = body.webhook_url or None
+    if body.rate_limit_per_minute is not None:
+        app.rate_limit_per_minute = body.rate_limit_per_minute
+    if body.scopes is not None:
+        app.scopes = body.scopes
+    if body.ip_allowlist is not None:
+        app.ip_allowlist = body.ip_allowlist
+    if body.is_active is not None:
+        app.is_active = body.is_active
+    await db.commit()
+    await db.refresh(app)
+    return _partner_response(app)
+
+
+@router.post("/partners/{partner_id}/rotate-key", response_model=PartnerAppResponse)
+async def rotate_partner_key_admin(
+    partner_id: uuid.UUID,
+    current_user: User = Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    app = await db.get(PartnerApp, partner_id)
+    if not app or app.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Partner app not found")
+    raw_key = await rotate_partner_key(db, app)
+    return _partner_response(app, api_key=raw_key)
+
+
+@router.delete("/partners/{partner_id}")
+async def soft_delete_partner_app(
+    partner_id: uuid.UUID,
+    current_user: User = Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    app = await db.get(PartnerApp, partner_id)
+    if not app or app.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Partner app not found")
+    app.is_active = False
+    app.deleted_at = datetime.now(timezone.utc)
+    await db.commit()
+    return {"status": "deleted"}
+
+
+@router.get("/partners/{partner_id}/usage")
+async def partner_usage(
+    partner_id: uuid.UUID,
+    current_user: User = Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """L2B / look summary for the partner's tenant org."""
+    app = await db.get(PartnerApp, partner_id)
+    if not app or app.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Partner app not found")
+    summary = await summarize_org_l2b(db, app.organization_id, days=7)
+    return {
+        "partner_app_id": str(app.id),
+        "organization_id": str(app.organization_id),
+        "name": app.name,
+        "rate_limit_per_minute": app.rate_limit_per_minute,
+        "l2b": summary,
     }
