@@ -48,7 +48,20 @@ class MockAdapter(BaseAdapter):
                     tax_amount=3000.0,
                     title=f"Mock Flight: {query.origin} to {query.destination}",
                     description="Non-stop, 2h 30m. Includes 15kg checked baggage.",
-                    raw_data={"airline": "MockAir", "flight_number": "MK101"},
+                    inventory_mode="mock",
+                    source_type="mock",
+                    duration_minutes=150,
+                    stops=0,
+                    airline_code="MK",
+                    airline_name="MockAir",
+                    depart_time="08:00",
+                    raw_data={
+                        "airline": "MockAir",
+                        "airline_code": "MK",
+                        "flight_number": "MK101",
+                        "inventory_mode": "mock",
+                        "provider": "mock_supplier",
+                    },
                     valid_until=datetime.now(timezone.utc) + timedelta(minutes=15),
                 )
             )
@@ -64,7 +77,18 @@ class MockAdapter(BaseAdapter):
                     tax_amount=2500.0,
                     title=f"Mock Economy Flight: {query.origin} to {query.destination}",
                     description="1 stop, 5h 00m. Basic economy.",
-                    raw_data={"airline": "MockBudget", "flight_number": "MB202"},
+                    inventory_mode="mock",
+                    source_type="mock",
+                    duration_minutes=300,
+                    stops=1,
+                    airline_code="MB",
+                    airline_name="MockBudget",
+                    depart_time="14:30",
+                    raw_data={
+                        "airline": "MockBudget",
+                        "flight_number": "MB202",
+                        "inventory_mode": "mock",
+                    },
                     valid_until=datetime.now(timezone.utc) + timedelta(minutes=15),
                 )
             )
@@ -81,7 +105,14 @@ class MockAdapter(BaseAdapter):
                     tax_amount=3000.0,
                     title=f"Mock Fare-Risk Flight: {query.origin} to {query.destination}",
                     description="Revalidate will simulate fare_changed (for agent testing).",
-                    raw_data={"airline": "MockRisk", "simulate": "fare_changed"},
+                    inventory_mode="mock",
+                    source_type="mock",
+                    duration_minutes=180,
+                    stops=0,
+                    airline_code="MR",
+                    airline_name="MockRisk",
+                    depart_time="10:15",
+                    raw_data={"airline": "MockRisk", "simulate": "fare_changed", "inventory_mode": "mock"},
                     valid_until=datetime.now(timezone.utc) + timedelta(minutes=15),
                 )
             )
@@ -97,7 +128,14 @@ class MockAdapter(BaseAdapter):
                     tax_amount=1900.0,
                     title=f"Mock Sold-Out Flight: {query.origin} to {query.destination}",
                     description="Revalidate will simulate sold_out (for agent testing).",
-                    raw_data={"airline": "MockGone", "simulate": "sold_out"},
+                    inventory_mode="mock",
+                    source_type="mock",
+                    duration_minutes=160,
+                    stops=0,
+                    airline_code="MG",
+                    airline_name="MockGone",
+                    depart_time="19:45",
+                    raw_data={"airline": "MockGone", "simulate": "sold_out", "inventory_mode": "mock"},
                     valid_until=datetime.now(timezone.utc) + timedelta(minutes=15),
                 )
             )
@@ -114,7 +152,10 @@ class MockAdapter(BaseAdapter):
                     tax_amount=1500.0,
                     title=f"Mock Luxury Hotel in {query.destination}",
                     description="Deluxe King Room with Sea View. Breakfast included.",
-                    raw_data={"hotel_id": "H100", "room_type": "DLX"},
+                    inventory_mode="mock",
+                    source_type="mock",
+                    stops=0,
+                    raw_data={"hotel_id": "H100", "room_type": "DLX", "inventory_mode": "mock"},
                     valid_until=datetime.now(timezone.utc) + timedelta(minutes=30),
                 )
             )
@@ -130,7 +171,10 @@ class MockAdapter(BaseAdapter):
                     tax_amount=1000.0,
                     title=f"Mock Sold-Out Hotel in {query.destination}",
                     description="Revalidate will simulate sold_out (for agent testing).",
-                    raw_data={"hotel_id": "H999", "simulate": "sold_out"},
+                    inventory_mode="mock",
+                    source_type="mock",
+                    stops=0,
+                    raw_data={"hotel_id": "H999", "simulate": "sold_out", "inventory_mode": "mock"},
                     valid_until=datetime.now(timezone.utc) + timedelta(minutes=30),
                 )
             )
@@ -172,8 +216,16 @@ class MockAdapter(BaseAdapter):
         offer.valid_until = datetime.now(timezone.utc) + timedelta(minutes=30)
         return offer
 
-    async def book(self, offer: NormalizedOffer, passengers: List[Dict[str, Any]]) -> str:
-        return f"MOCK-PNR-{str(uuid.uuid4())[:8].upper()}"
+    async def book(self, offer: NormalizedOffer, passengers: List[Dict[str, Any]]):
+        from app.schemas.booking_result import BookResult
+
+        pnr = f"MOCK-PNR-{str(uuid.uuid4())[:8].upper()}"
+        return BookResult(
+            pnr=pnr,
+            supplier_booking_id=f"MOCK-BID-{str(uuid.uuid4())[:8].upper()}",
+            ticket_numbers=[f"MOCK-TKT-{str(uuid.uuid4())[:6].upper()}"],
+            raw={"provider": self.supplier_code, "inventory_mode": "mock"},
+        )
 
     async def cancel(self, booking_ref: str) -> bool:
         return True

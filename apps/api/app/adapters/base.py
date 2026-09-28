@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from app.schemas.inventory import SearchQuery, NormalizedOffer, AdapterCapabilities
+from app.schemas.booking_result import BookResult
 from app.core.inventory_errors import InventoryRevalidateError
 
 
@@ -33,8 +34,12 @@ class BaseAdapter(ABC):
         pass
 
     @abstractmethod
-    async def book(self, offer: NormalizedOffer, passengers: List[Dict[str, Any]]) -> str:
-        """Returns supplier booking reference (e.g. PNR)."""
+    async def book(
+        self, offer: NormalizedOffer, passengers: List[Dict[str, Any]]
+    ) -> Union[BookResult, str]:
+        """
+        Book offer. Prefer BookResult (PNR + ticket refs); str PNR still accepted.
+        """
         pass
 
     @abstractmethod
