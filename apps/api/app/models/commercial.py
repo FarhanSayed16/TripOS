@@ -41,6 +41,9 @@ class QuoteItem(Base, TimestampMixin):
     agent_markup: Mapped[int] = mapped_column(Integer)
     platform_fee: Mapped[int] = mapped_column(Integer)
     customer_total: Mapped[int] = mapped_column(Integer)
+    # FC Phase 6 — frozen ancillary/seat lines (paise)
+    extras: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
+    extras_total: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
     quote: Mapped["Quote"] = relationship("Quote", back_populates="items")
     offer_snapshot: Mapped["OfferSnapshot"] = relationship(

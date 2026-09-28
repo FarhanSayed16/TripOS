@@ -45,3 +45,40 @@ class RateLimiter:
 
 # Global instance
 inventory_rate_limiter = RateLimiter(requests_per_minute=30)
+
+
+class PartnerRateLimiter:
+    """Per-partner-app sliding window (FC Phase 8)."""
+
+    def __init__(self):
+        self._history: Dict[uuid.UUID, List[float]] = {}
+        self._limits: Dict[uuid.UUID, int] = {}
+
+    def check(self, partner_app_id: uuid.UUID, limit_per_minute: int):
+        limit = max(1, int(limit_per_minute or 60))
+        now = time.time()
+        window_start = now - 60.0
+        history = self._history.get(partner_app_id, [])
+        history = [ts for ts in history if ts > window_start]
+        if len(history) >= limit:
+            logger.warning(
+                "partner_rate_limit_exceeded",
+                partner_app_id=str(partner_app_id),
+                count=len(history),
+                limit=limit,
+            )
+            raise HTTPException(
+                status_code=429,
+                detail=f"Partner rate limit exceeded. Maximum {limit} requests per minute.",
+            )
+        history.append(now)
+        self._history[partner_app_id] = history
+        if len(self._history) > 200:
+            self._history = {
+                k: [ts for ts in v if ts > window_start]
+                for k, v in self._history.items()
+                if any(ts > window_start for ts in v)
+            }
+
+
+partner_rate_limiter = PartnerRateLimiter()

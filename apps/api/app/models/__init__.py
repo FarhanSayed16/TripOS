@@ -7,3 +7,5 @@ from .commercial import *
 from .packages import *
 from .wallet import *
 from .fx import *
+from .servicing import *
+from .partner import *
