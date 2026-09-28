@@ -8,8 +8,9 @@ import structlog
 from app.core.config import settings
 from app.core.exceptions import AppError, app_error_handler
 from app.core.middleware import LoggingMiddleware
+from app.core.locale_middleware import LocaleMiddleware
 from app.db.session import engine
-from app.api import health, auth, customers, organizations, inventory, quotes, public, webhooks, payments, bookings, admin, packages, wallet, followups, documents, ai
+from app.api import health, auth, customers, organizations, inventory, quotes, public, webhooks, payments, bookings, admin, packages, wallet, followups, documents, ai, partner
 
 if settings.SENTRY_DSN:
     sentry_sdk.init(
@@ -42,6 +43,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.add_middleware(LoggingMiddleware)
+    app.add_middleware(LocaleMiddleware)
     app.add_middleware(CorrelationIdMiddleware)
 
     # Exception Handlers
@@ -65,6 +67,7 @@ def create_app() -> FastAPI:
     app.include_router(documents.router, prefix="/api/v1")
     app.include_router(documents.doc_router, prefix="/api/v1")
     app.include_router(ai.router, prefix="/api/v1")
+    app.include_router(partner.router, prefix="/api/v1")
 
     return app
 

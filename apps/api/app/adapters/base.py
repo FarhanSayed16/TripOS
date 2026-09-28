@@ -65,3 +65,25 @@ class BaseAdapter(ABC):
             "supplier_error",
             str(exc) or "Supplier error",
         )
+
+    async def get_ancillaries(self, offer: NormalizedOffer):
+        """FC Phase 6 — optional. Default: unsupported."""
+        from app.schemas.ancillaries import AncillaryCatalog
+
+        return AncillaryCatalog(
+            supported=False,
+            currency=offer.currency or "INR",
+            items=[],
+            message="Ancillaries not supported by this supplier",
+        )
+
+    async def get_seat_map(self, offer: NormalizedOffer):
+        """FC Phase 6 — optional. Default: unsupported."""
+        from app.schemas.ancillaries import SeatMapResponse
+
+        return SeatMapResponse(
+            supported=False,
+            currency=offer.currency or "INR",
+            rows=[],
+            message="Seat map not supported by this supplier",
+        )

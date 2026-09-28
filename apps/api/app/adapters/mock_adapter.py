@@ -7,9 +7,18 @@ from app.schemas.inventory import (
     NormalizedOffer,
     AdapterCapabilities,
     InventoryType,
+    BaggageInfo,
+    FlightSegment,
 )
 from app.adapters.base import BaseAdapter
 from app.core.inventory_errors import InventoryRevalidateError
+from app.schemas.ancillaries import (
+    AncillaryCatalog,
+    AncillaryOption,
+    SeatMapResponse,
+    SeatRow,
+    SeatCell,
+)
 
 
 class MockAdapter(BaseAdapter):
@@ -31,40 +40,105 @@ class MockAdapter(BaseAdapter):
             can_revalidate=True,
             can_book=True,
             can_cancel=True,
+            can_ancillaries=True,
+            can_seat_map=True,
         )
 
     async def search(self, query: SearchQuery) -> List[NormalizedOffer]:
         offers = []
-        if query.type == InventoryType.FLIGHT:
-            offers.append(
-                NormalizedOffer(
-                    id=str(uuid.uuid4()),
-                    supplier_code=self.supplier_code,
-                    supplier_reference="MOCK-FLIGHT-001",
-                    type=InventoryType.FLIGHT,
-                    currency="INR",
-                    total_amount=15000.0,
-                    base_amount=12000.0,
-                    tax_amount=3000.0,
-                    title=f"Mock Flight: {query.origin} to {query.destination}",
-                    description="Non-stop, 2h 30m. Includes 15kg checked baggage.",
-                    inventory_mode="mock",
-                    source_type="mock",
-                    duration_minutes=150,
-                    stops=0,
-                    airline_code="MK",
-                    airline_name="MockAir",
-                    depart_time="08:00",
-                    raw_data={
-                        "airline": "MockAir",
-                        "airline_code": "MK",
-                        "flight_number": "MK101",
-                        "inventory_mode": "mock",
-                        "provider": "mock_supplier",
-                    },
-                    valid_until=datetime.now(timezone.utc) + timedelta(minutes=15),
-                )
+        deal = (query.deal_code or "").strip().upper() or None
+        if not deal and query.deal_codes:
+            deal = str(query.deal_codes[0]).strip().upper() or None
+        # Corporate/promo codes get a small mock discount on family fares
+        deal_discount = 0.05 if deal else 0.0
+
+        def _seg(
+            *,
+            marketing: str,
+            operating: str,
+            flight: str,
+            dep: str,
+            arr: str,
+            duration: int,
+        ) -> FlightSegment:
+            return FlightSegment(
+                origin=query.origin.upper(),
+                destination=query.destination.upper(),
+                departure_at=dep,
+                arrival_at=arr,
+                marketing_carrier=marketing,
+                operating_carrier=operating,
+                flight_number=flight,
+                duration_minutes=duration,
+                cabin="economy",
             )
+
+        if query.type == InventoryType.FLIGHT:
+            family_group = f"MOCK-FG-{query.origin}-{query.destination}-MK101"
+            # FC Phase 6 — branded fare family variants (same flight)
+            for family, code, total, checked, desc in [
+                ("Basic", "BASIC", 12000.0, 0, "Basic — cabin bag only, no changes."),
+                ("Flex", "FLEX", 15000.0, 15, "Flex — 15kg checked, free date change."),
+                ("Premium", "PREMIUM", 18500.0, 30, "Premium — 30kg + seat + meal included."),
+            ]:
+                priced = round(total * (1.0 - deal_discount), 2)
+                base = round(priced * 0.8, 2)
+                offers.append(
+                    NormalizedOffer(
+                        id=str(uuid.uuid4()),
+                        supplier_code=self.supplier_code,
+                        supplier_reference=f"MOCK-FLIGHT-001-{code}",
+                        type=InventoryType.FLIGHT,
+                        currency="INR",
+                        total_amount=priced,
+                        base_amount=base,
+                        tax_amount=round(priced - base, 2),
+                        title=f"MockAir {family}: {query.origin} to {query.destination}",
+                        description=f"Non-stop, 2h 30m. {desc}",
+                        inventory_mode="mock",
+                        source_type="mock",
+                        duration_minutes=150,
+                        stops=0,
+                        airline_code="MK",
+                        airline_name="MockAir",
+                        depart_time="08:00",
+                        fare_family=family,
+                        fare_family_code=code,
+                        cabin="economy",
+                        baggage=BaggageInfo(
+                            cabin_kg=7,
+                            checked_kg=float(checked) if checked else None,
+                            notes=desc,
+                        ),
+                        family_group_id=family_group,
+                        supports_ancillaries=True,
+                        supports_seat_map=True,
+                        deal_code=deal,
+                        segments=[
+                            _seg(
+                                marketing="MK",
+                                operating="AI",
+                                flight="MK101",
+                                dep="08:00",
+                                arr="10:30",
+                                duration=150,
+                            )
+                        ],
+                        raw_data={
+                            "airline": "MockAir",
+                            "airline_code": "MK",
+                            "flight_number": "MK101",
+                            "inventory_mode": "mock",
+                            "provider": "mock_supplier",
+                            "fare_family": family,
+                            "fare_family_code": code,
+                            "family_group_id": family_group,
+                            "deal_code": deal,
+                            "operating_carrier": "AI",
+                        },
+                        valid_until=datetime.now(timezone.utc) + timedelta(minutes=15),
+                    )
+                )
             offers.append(
                 NormalizedOffer(
                     id=str(uuid.uuid4()),
@@ -72,7 +146,7 @@ class MockAdapter(BaseAdapter):
                     supplier_reference="MOCK-FLIGHT-002",
                     type=InventoryType.FLIGHT,
                     currency="INR",
-                    total_amount=12500.0,
+                    total_amount=round(12500.0 * (1.0 - deal_discount), 2),
                     base_amount=10000.0,
                     tax_amount=2500.0,
                     title=f"Mock Economy Flight: {query.origin} to {query.destination}",
@@ -84,10 +158,39 @@ class MockAdapter(BaseAdapter):
                     airline_code="MB",
                     airline_name="MockBudget",
                     depart_time="14:30",
+                    fare_family="Basic",
+                    fare_family_code="BASIC",
+                    cabin="economy",
+                    baggage=BaggageInfo(cabin_kg=7, checked_kg=None, notes="Cabin only"),
+                    supports_ancillaries=True,
+                    supports_seat_map=False,
+                    deal_code=deal,
+                    segments=[
+                        _seg(
+                            marketing="MB",
+                            operating="MB",
+                            flight="MB202",
+                            dep="14:30",
+                            arr="16:00",
+                            duration=90,
+                        ),
+                        FlightSegment(
+                            origin="HYD",
+                            destination=query.destination.upper(),
+                            departure_at="17:00",
+                            arrival_at="19:30",
+                            marketing_carrier="MB",
+                            operating_carrier="6E",
+                            flight_number="MB203",
+                            duration_minutes=150,
+                            cabin="economy",
+                        ),
+                    ],
                     raw_data={
                         "airline": "MockBudget",
                         "flight_number": "MB202",
                         "inventory_mode": "mock",
+                        "deal_code": deal,
                     },
                     valid_until=datetime.now(timezone.utc) + timedelta(minutes=15),
                 )
@@ -112,6 +215,21 @@ class MockAdapter(BaseAdapter):
                     airline_code="MR",
                     airline_name="MockRisk",
                     depart_time="10:15",
+                    fare_family="Flex",
+                    fare_family_code="FLEX",
+                    cabin="economy",
+                    supports_ancillaries=True,
+                    supports_seat_map=True,
+                    segments=[
+                        _seg(
+                            marketing="MR",
+                            operating="MR",
+                            flight="MR777",
+                            dep="10:15",
+                            arr="13:15",
+                            duration=180,
+                        )
+                    ],
                     raw_data={"airline": "MockRisk", "simulate": "fare_changed", "inventory_mode": "mock"},
                     valid_until=datetime.now(timezone.utc) + timedelta(minutes=15),
                 )
@@ -135,6 +253,16 @@ class MockAdapter(BaseAdapter):
                     airline_code="MG",
                     airline_name="MockGone",
                     depart_time="19:45",
+                    segments=[
+                        _seg(
+                            marketing="MG",
+                            operating="MG",
+                            flight="MG404",
+                            dep="19:45",
+                            arr="22:25",
+                            duration=160,
+                        )
+                    ],
                     raw_data={"airline": "MockGone", "simulate": "sold_out", "inventory_mode": "mock"},
                     valid_until=datetime.now(timezone.utc) + timedelta(minutes=15),
                 )
@@ -220,11 +348,109 @@ class MockAdapter(BaseAdapter):
         from app.schemas.booking_result import BookResult
 
         pnr = f"MOCK-PNR-{str(uuid.uuid4())[:8].upper()}"
+        extras = (offer.raw_data or {}).get("selected_extras") or []
         return BookResult(
             pnr=pnr,
             supplier_booking_id=f"MOCK-BID-{str(uuid.uuid4())[:8].upper()}",
             ticket_numbers=[f"MOCK-TKT-{str(uuid.uuid4())[:6].upper()}"],
-            raw={"provider": self.supplier_code, "inventory_mode": "mock"},
+            raw={
+                "provider": self.supplier_code,
+                "inventory_mode": "mock",
+                "fare_family": offer.fare_family,
+                "selected_extras": extras,
+            },
+        )
+
+    async def get_ancillaries(self, offer: NormalizedOffer) -> AncillaryCatalog:
+        if offer.type != InventoryType.FLIGHT:
+            return AncillaryCatalog(
+                supported=False,
+                message="Ancillaries only for flights in V1",
+            )
+        if offer.supports_ancillaries is False:
+            return AncillaryCatalog(supported=False, message="Not available for this offer")
+        cur = offer.currency or "INR"
+        items = [
+            AncillaryOption(
+                code="BAG_5KG",
+                type="baggage",
+                label="Extra 5kg checked bag",
+                description="Add 5kg to checked allowance",
+                amount=750.0,
+                currency=cur,
+            ),
+            AncillaryOption(
+                code="BAG_10KG",
+                type="baggage",
+                label="Extra 10kg checked bag",
+                amount=1200.0,
+                currency=cur,
+            ),
+            AncillaryOption(
+                code="MEAL_VEG",
+                type="meal",
+                label="Vegetarian meal",
+                amount=350.0,
+                currency=cur,
+            ),
+            AncillaryOption(
+                code="MEAL_NONVEG",
+                type="meal",
+                label="Non-veg meal",
+                amount=350.0,
+                currency=cur,
+            ),
+            AncillaryOption(
+                code="SSR_WCHR",
+                type="ssr",
+                label="Wheelchair assistance",
+                description="SSR WCHR — no charge (request only)",
+                amount=0.0,
+                currency=cur,
+                meta={"ssr_code": "WCHR"},
+            ),
+        ]
+        return AncillaryCatalog(supported=True, currency=cur, items=items)
+
+    async def get_seat_map(self, offer: NormalizedOffer) -> SeatMapResponse:
+        if offer.type != InventoryType.FLIGHT:
+            return SeatMapResponse(supported=False, message="Seat map only for flights")
+        if offer.supports_seat_map is False:
+            return SeatMapResponse(
+                supported=False,
+                message="Seat selection not available for this fare",
+            )
+        cur = offer.currency or "INR"
+        rows: List[SeatRow] = []
+        for row_num in range(10, 16):
+            cells = []
+            for letter, chars in [
+                ("A", ["window"]),
+                ("B", ["middle"]),
+                ("C", ["aisle"]),
+                ("D", ["aisle"]),
+                ("E", ["middle"]),
+                ("F", ["window"]),
+            ]:
+                # Block a couple of seats for realism
+                available = not (row_num == 12 and letter in ("A", "F"))
+                premium = row_num <= 11
+                amount = 800.0 if premium else 450.0
+                cells.append(
+                    SeatCell(
+                        seat=f"{row_num}{letter}",
+                        available=available,
+                        amount=amount if available else 0.0,
+                        currency=cur,
+                        characteristics=chars + (["exit"] if row_num == 14 else []),
+                    )
+                )
+            rows.append(SeatRow(row=row_num, seats=cells))
+        return SeatMapResponse(
+            supported=True,
+            currency=cur,
+            cabin=offer.cabin or "economy",
+            rows=rows,
         )
 
     async def cancel(self, booking_ref: str) -> bool:
