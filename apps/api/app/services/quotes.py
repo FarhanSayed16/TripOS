@@ -160,6 +160,27 @@ async def create_quote(quote_in: QuoteCreate, current_user: User, db: AsyncSessi
     now = datetime.now(timezone.utc)
     valid_until = now + timedelta(hours=_quote_ttl_hours(quote_type))
 
+    from app.services.fx import get_fx_quote, resolve_display_currency
+
+    charge_currency = settings.CHARGE_CURRENCY or "INR"
+    display_currency = await resolve_display_currency(
+        db,
+        user=current_user,
+        organization_id=current_user.active_organization_id,
+    )
+    fx_meta = None
+    if display_currency != charge_currency:
+        try:
+            fx_meta = await get_fx_quote(
+                db, base=charge_currency, quote=display_currency
+            )
+        except ValueError as e:
+            raise AppError(
+                str(e),
+                status_code=400,
+                error_code="FX_RATE_MISSING",
+            ) from e
+
     quote = Quote(
         organization_id=current_user.active_organization_id,
         customer_id=customer.id,
@@ -167,6 +188,11 @@ async def create_quote(quote_in: QuoteCreate, current_user: User, db: AsyncSessi
         public_token=secrets.token_urlsafe(32),
         status=QuoteStatus.draft,
         valid_until=valid_until,
+        charge_currency=charge_currency,
+        display_currency=display_currency,
+        fx_rate=fx_meta.rate if fx_meta else None,
+        fx_as_of=fx_meta.as_of if fx_meta else None,
+        fx_source=fx_meta.source if fx_meta else ("identity" if display_currency == charge_currency else None),
     )
     db.add(quote)
     await db.flush()
@@ -181,11 +207,23 @@ async def create_quote(quote_in: QuoteCreate, current_user: User, db: AsyncSessi
                 error_code="INVALID_SUPPLIER",
             )
 
+        # Snapshot includes money envelope at create time for honesty
+        offer_dump = item_in.offer.model_dump(mode="json")
+        if fx_meta:
+            from app.services.fx import money_display_dict
+
+            offer_dump["money"] = money_display_dict(
+                currency=item_in.offer.currency or charge_currency,
+                amount_major=item_in.offer.total_amount,
+                fx=fx_meta,
+                display_currency=display_currency,
+            )
+
         snapshot = OfferSnapshot(
             search_request_id=uuid.UUID(item_in.search_request_id),
             supplier_id=supplier.id,
             supplier_offer_id=item_in.offer.supplier_reference,
-            offer_data=item_in.offer.model_dump(mode="json"),
+            offer_data=offer_dump,
         )
         db.add(snapshot)
         await db.flush()
@@ -423,6 +461,11 @@ async def refresh_quote(quote_id: str, current_user: User, db: AsyncSession) -> 
         status=QuoteStatus.draft,
         public_token=secrets.token_urlsafe(32),
         valid_until=valid_until,
+        charge_currency=quote.charge_currency or (settings.CHARGE_CURRENCY or "INR"),
+        display_currency=quote.display_currency or (settings.CHARGE_CURRENCY or "INR"),
+        fx_rate=quote.fx_rate,
+        fx_as_of=quote.fx_as_of,
+        fx_source=quote.fx_source,
     )
     db.add(new_quote)
     await db.flush()

@@ -98,10 +98,13 @@ async def test_revalidate_sold_out(adapter: BaseAdapter):
 
 @pytest.mark.asyncio
 async def test_book_cancel_status(adapter: BaseAdapter):
+    from app.schemas.booking_result import BookResult
+
     offers = await adapter.search(_flight_query())
     offer = offers[0]
     await adapter.revalidate(offer)
-    pnr = await adapter.book(offer, [{"first_name": "Test", "last_name": "User"}])
+    result = await adapter.book(offer, [{"first_name": "Test", "last_name": "User"}])
+    pnr = result.pnr if isinstance(result, BookResult) else result
     assert pnr.startswith("MOCK-PNR-")
     assert await adapter.cancel(pnr) is True
     st = await adapter.status(pnr)

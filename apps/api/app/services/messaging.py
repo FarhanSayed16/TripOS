@@ -49,17 +49,42 @@ async def generate_whatsapp_preview(quote_id: str, current_user: User, db: Async
     # Note: Frontend URL comes from config, defaulting here to typical local for now, 
     # but ideally it should be injected via settings.
     public_url = f"{frontend_url}/q/{quote.public_token}"
-    total = sum(item.customer_total for item in quote.items) / 100
+    charge = getattr(quote, "charge_currency", None) or "INR"
+    display = getattr(quote, "display_currency", None) or charge
+    total_paise = sum(item.customer_total for item in quote.items)
+    total_charge = total_paise / 100
     valid_until = quote.valid_until.strftime("%B %d, %Y %I:%M %p")
+
+    from app.services.fx import fx_quote_from_quote_row, paise_money_display
+
+    fx = fx_quote_from_quote_row(quote)
+    money = paise_money_display(
+        total_paise,
+        charge_currency=charge,
+        fx=fx,
+        display_currency=display,
+    )
+    display_amt = money["display_amount"]
+    display_cur = money["display_currency"]
+
+    if display_cur.upper() != charge.upper():
+        amount_line = (
+            f"Here is your travel quote for {display_cur} {display_amt:,.2f} "
+            f"(approx; payment in {charge} {total_charge:,.2f}).\n\n"
+            f"FX rate as of {quote.fx_as_of.strftime('%Y-%m-%d %H:%M UTC') if quote.fx_as_of else 'quote creation'}.\n\n"
+        )
+    else:
+        amount_line = f"Here is your travel quote for {charge} {total_charge:,.2f}.\n\n"
 
     # Generate template text
     message_template = (
         f"Hi {customer.first_name},\n\n"
-        f"Here is your travel quote for ₹{total:,.2f}.\n\n"
+        f"{amount_line}"
         f"View your quote securely here: {public_url}\n\n"
         f"Please note this quote is valid until {valid_until}. Let me know if you have any questions!\n\n"
         f"Thanks."
     )
+
 
     provider = get_messaging_provider("whatsapp")
     wa_me_url = provider.build_outbound_url(phone, message_template)
