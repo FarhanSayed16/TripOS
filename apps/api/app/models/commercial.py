@@ -1,12 +1,13 @@
 import uuid
 from typing import List, Optional
 from datetime import datetime
-from sqlalchemy import String, ForeignKey, DateTime, Integer, Text, Enum as SAEnum
+from decimal import Decimal
+from sqlalchemy import String, ForeignKey, DateTime, Integer, Text, Numeric, Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, TimestampMixin
-from .enums import QuoteStatus, PaymentStatus, BookingStatus, BookingFailureReason, JobStatus
+from .enums import QuoteStatus, PaymentStatus, BookingStatus, BookingFailureReason, JobStatus, RefundStatus
 
 class Quote(Base, TimestampMixin):
     __tablename__ = "quotes"
@@ -17,6 +18,12 @@ class Quote(Base, TimestampMixin):
     public_token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     status: Mapped[QuoteStatus] = mapped_column(default=QuoteStatus.draft)
     valid_until: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # FC Phase 4 — display FX snapshot (charge stays settle currency)
+    charge_currency: Mapped[str] = mapped_column(String(3), default="INR", server_default="INR")
+    display_currency: Mapped[str] = mapped_column(String(3), default="INR", server_default="INR")
+    fx_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    fx_as_of: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    fx_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     customer: Mapped["Customer"] = relationship("Customer", back_populates="quotes")
     organization: Mapped["Organization"] = relationship("Organization", back_populates="quotes")
@@ -68,9 +75,29 @@ class Payment(Base, TimestampMixin):
 class Refund(Base, TimestampMixin):
     __tablename__ = "refunds"
 
-    payment_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("payments.id"))
+    payment_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("payments.id"), index=True)
+    organization_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("organizations.id"), nullable=True, index=True
+    )
     amount: Mapped[int] = mapped_column(Integer)
     gateway_refund_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    status: Mapped[RefundStatus] = mapped_column(
+        SAEnum(
+            RefundStatus,
+            name="refundstatus",
+            create_type=False,
+            values_callable=lambda enum_cls: [e.value for e in enum_cls],
+        ),
+        default=RefundStatus.requested,
+    )
+    reason: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    requested_by_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("users.id"), nullable=True
+    )
+    processed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     payment: Mapped["Payment"] = relationship("Payment", back_populates="refunds")
 
@@ -84,6 +111,9 @@ class Booking(Base, TimestampMixin):
     status: Mapped[BookingStatus] = mapped_column(default=BookingStatus.pending)
     supplier_pnr: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     supplier_code: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
+    # FC Phase 1 — richer ticket refs from live suppliers
+    supplier_booking_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    ticket_numbers: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
     failure_reason: Mapped[Optional[BookingFailureReason]] = mapped_column(nullable=True)
 
     quote: Mapped["Quote"] = relationship("Quote", back_populates="booking")

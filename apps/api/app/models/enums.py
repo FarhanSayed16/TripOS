@@ -37,6 +37,12 @@ class BookingFailureReason(str, enum.Enum):
     missing_pax = "missing_pax"
     unknown = "unknown"
 
+class RefundStatus(str, enum.Enum):
+    requested = "requested"
+    processing = "processing"
+    succeeded = "succeeded"
+    failed = "failed"
+
 class JobStatus(str, enum.Enum):
     pending = "pending"
     running = "running"

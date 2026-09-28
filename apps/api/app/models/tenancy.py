@@ -25,6 +25,8 @@ class Organization(Base, TimestampMixin, SoftDeleteMixin):
     primary_color: Mapped[Optional[str]] = mapped_column(String(7), nullable=True)
     parent_organization_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("organizations.id"), nullable=True)
     status: Mapped[OrgStatus] = mapped_column(default=OrgStatus.pending_approval)
+    # FC Phase 4 — display currency for browse/quote (charge currency stays settle/INR)
+    preferred_currency: Mapped[str] = mapped_column(String(3), default="INR", server_default="INR")
 
     # Relationships
     domains: Mapped[List["OrganizationDomain"]] = relationship("OrganizationDomain", back_populates="organization", cascade="all, delete-orphan")
@@ -43,6 +45,8 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     is_platform_admin: Mapped[bool] = mapped_column(default=False)
     # Bumped on logout / password reset / refresh rotate — invalidates prior JWTs (AUDIT-004/018)
     token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    # FC Phase 4 — optional override of org preferred_currency for display
+    preferred_currency: Mapped[Optional[str]] = mapped_column(String(3), nullable=True)
 
     # Relationships
     memberships: Mapped[List["OrganizationMember"]] = relationship("OrganizationMember", back_populates="user")

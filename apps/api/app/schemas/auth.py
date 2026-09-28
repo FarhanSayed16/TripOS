@@ -1,5 +1,5 @@
 import uuid
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, Field
 
 
 class SignupRequest(BaseModel):
@@ -43,3 +43,8 @@ class UserResponse(BaseModel):
     org_role: str | None = None
     org_status: str | None = None
     is_platform_admin: bool = False
+    preferred_currency: str | None = None
+
+
+class UserPreferencesUpdate(BaseModel):
+    preferred_currency: str | None = Field(None, min_length=3, max_length=3)

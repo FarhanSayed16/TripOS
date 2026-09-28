@@ -6,3 +6,4 @@ from .inventory import *
 from .commercial import *
 from .packages import *
 from .wallet import *
+from .fx import *

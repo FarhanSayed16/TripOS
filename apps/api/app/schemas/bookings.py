@@ -37,6 +37,9 @@ class BookingResponse(BaseModel):
     quote_id: uuid.UUID
     status: BookingStatus
     supplier_pnr: Optional[str] = None
+    supplier_code: Optional[str] = None
+    supplier_booking_id: Optional[str] = None
+    ticket_numbers: Optional[list[str]] = None
     failure_reason: Optional[str] = None
     failure_label: Optional[str] = None
     needs_manual_support: bool = False
