@@ -31,7 +31,12 @@ async def api_create_quote(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new quote from inventory snapshots."""
-    return await create_quote(quote_in, current_user, db)
+    quote = await create_quote(quote_in, current_user, db)
+    from app.services.fx import enrich_quote_items_money
+
+    data = QuoteResponse.model_validate(quote)
+    data.items = enrich_quote_items_money(quote)
+    return data
 
 
 @router.get("")
@@ -89,8 +94,12 @@ async def api_get_quote(
     
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
-        
-    return quote
+
+    from app.services.fx import enrich_quote_items_money
+
+    data = QuoteResponse.model_validate(quote)
+    data.items = enrich_quote_items_money(quote)
+    return data
 
 
 @router.put("/{quote_id}/passengers", response_model=QuoteResponse)
@@ -187,6 +196,7 @@ async def api_cancel_quote(
         select(Quote)
         .options(
             selectinload(Quote.booking),
+            selectinload(Quote.payment),
             selectinload(Quote.items).selectinload(QuoteItem.offer_snapshot),
         )
         .where(
@@ -225,9 +235,73 @@ async def api_cancel_quote(
         metadata={},
     )
 
+    # FC Phase 2 — if payment was captured, open refund request for ops
+    from app.services.refunds import maybe_request_refund_on_cancel
+
+    refund = await maybe_request_refund_on_cancel(
+        db, quote, requested_by_user_id=current_user.id
+    )
+
     await db.commit()
     await db.refresh(quote)
     return quote
+
+
+@router.get("/{quote_id}/fare-rules")
+async def api_quote_fare_rules(
+    quote_id: str,
+    current_user: User = Depends(require_active_org),
+    db: AsyncSession = Depends(get_db),
+):
+    """FC Phase 2 — fare rules for the first offer on the quote."""
+    from sqlalchemy.orm import selectinload
+    from app.schemas.inventory import NormalizedOffer
+    from app.services.fare_rules import get_fare_rules_for_offer
+
+    stmt = (
+        select(Quote)
+        .options(selectinload(Quote.items).selectinload(QuoteItem.offer_snapshot))
+        .where(
+            Quote.id == quote_id,
+            Quote.organization_id == current_user.active_organization_id,
+        )
+    )
+    quote = (await db.execute(stmt)).scalar_one_or_none()
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    if not quote.items or not quote.items[0].offer_snapshot:
+        raise HTTPException(status_code=404, detail="No offer on quote")
+    offer = NormalizedOffer.model_validate(quote.items[0].offer_snapshot.offer_data)
+    return await get_fare_rules_for_offer(offer)
+
+
+@router.get("/{quote_id}/refunds")
+async def api_quote_refunds(
+    quote_id: str,
+    current_user: User = Depends(require_active_org),
+    db: AsyncSession = Depends(get_db),
+):
+    """FC Phase 2 — refund records for this quote's payment."""
+    from app.services.refunds import refunds_for_quote
+    from app.schemas.refunds import RefundResponse
+
+    owned = (
+        await db.execute(
+            select(Quote.id).where(
+                Quote.id == quote_id,
+                Quote.organization_id == current_user.active_organization_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not owned:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    rows = await refunds_for_quote(db, quote_id)
+    out = []
+    for r in rows:
+        payload = RefundResponse.model_validate(r).model_dump()
+        payload["quote_id"] = quote_id
+        out.append(payload)
+    return out
 
 
 @router.get("/{quote_id}/audit")

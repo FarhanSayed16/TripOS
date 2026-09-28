@@ -43,9 +43,29 @@ class Settings(BaseSettings):
     PLATFORM_FEE_PAISE: int = 0
 
     # Inventory suppliers (comma-separated). Default mock-only for pilot honesty (Sprint L).
-    # Set INVENTORY_SUPPLIERS=mock_supplier,tbo to include simulated TBO offers.
+    # Set INVENTORY_SUPPLIERS=tbo with TBO_LIVE_ENABLED=true for FC Phase 1 live spine.
     INVENTORY_SUPPLIERS: str = "mock_supplier"
     SUPPLIER_STRATEGY: str = "all"  # all | primary_only | failover
+
+    # FC Phase 1 — TBO live HTTP (off by default; simulated adapter when false/missing creds)
+    TBO_LIVE_ENABLED: bool = False
+    TBO_BASE_URL: Optional[str] = None
+    TBO_CLIENT_ID: Optional[str] = None
+    TBO_USER_NAME: Optional[str] = None
+    TBO_PASSWORD: Optional[str] = None
+    TBO_END_USER_IP: str = "127.0.0.1"
+    TBO_HTTP_TIMEOUT_SECONDS: float = 60.0
+    TBO_AUTO_TICKET: bool = True  # call Ticket after Book when live
+    # Overridable Rest paths (Sahil adjusts if supplier version differs)
+    TBO_AUTH_PATH: str = "/SharedData.svc/rest/Authenticate"
+    TBO_SEARCH_PATH: str = "/BookingEngineService_Air/AirService.svc/rest/Search"
+    TBO_FARE_QUOTE_PATH: str = "/BookingEngineService_Air/AirService.svc/rest/FareQuote"
+    TBO_BOOK_PATH: str = "/BookingEngineService_Air/AirService.svc/rest/Book"
+    TBO_TICKET_PATH: str = "/BookingEngineService_Air/AirService.svc/rest/Ticket"
+    TBO_CANCEL_PATH: str = "/BookingEngineService_Air/AirService.svc/rest/ReleasePNR"
+    TBO_BOOKING_DETAILS_PATH: str = (
+        "/BookingEngineService_Air/AirService.svc/rest/GetBookingDetails"
+    )
 
     # Look-to-book thresholds (provisional Phase 0 defaults until Sahil overrides)
     L2B_WARN_RATIO: float = 80.0
@@ -96,6 +116,10 @@ class Settings(BaseSettings):
 
     # Encryption
     ENCRYPTION_KEY: str | None = None
+
+    # FC Phase 4 — display FX (charge/settle currency for Razorpay stays INR until multi-currency pay approved)
+    CHARGE_CURRENCY: str = "INR"
+    FX_PROVIDER_ENABLED: bool = False  # optional scheduled pull; manual rates are default
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

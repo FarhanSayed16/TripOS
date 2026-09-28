@@ -7,6 +7,7 @@ from app.schemas.quotes import PublicQuoteResponse
 from app.api.deps import get_db
 from app.models.commercial import Quote, QuoteItem
 from app.models.enums import PaymentStatus
+from app.core.config import settings
 
 router = APIRouter(prefix="/public", tags=["public"])
 
@@ -32,7 +33,12 @@ async def api_get_public_quote(
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
 
-    # ISSUE-07: Build response explicitly instead of mutating ORM objects
+    from app.services.fx import fx_quote_from_quote_row, paise_money_display
+
+    charge = quote.charge_currency or settings.CHARGE_CURRENCY or "INR"
+    display = quote.display_currency or charge
+    fx = fx_quote_from_quote_row(quote)
+
     sanitized_items = []
     for item in quote.items:
         sanitized_offer = {}
@@ -48,11 +54,25 @@ async def api_get_public_quote(
             "id": item.id,
             "customer_total": item.customer_total,
             "sanitized_offer_data": sanitized_offer,
+            "money": paise_money_display(
+                item.customer_total,
+                charge_currency=charge,
+                fx=fx,
+                display_currency=display,
+            ),
         })
 
     payment_link = None
     if quote.payment is not None and quote.payment.status == PaymentStatus.pending:
         payment_link = quote.payment.payment_link_url
+
+    charge_note = None
+    if display.upper() != charge.upper():
+        charge_note = (
+            f"Amounts shown in {display}. Payment is collected in {charge} "
+            f"(settle currency). Rate as of "
+            f"{quote.fx_as_of.isoformat() if quote.fx_as_of else 'quote creation'}."
+        )
 
     return PublicQuoteResponse(
         id=quote.id,
@@ -64,6 +84,12 @@ async def api_get_public_quote(
         agency_logo_url=quote.organization.logo_url if quote.organization else None,
         payment_status=quote.payment.status.value if quote.payment else None,
         booking_status=quote.booking.status.value if quote.booking else None,
+        charge_currency=charge,
+        display_currency=display,
+        fx_rate=float(quote.fx_rate) if quote.fx_rate is not None else None,
+        fx_as_of=quote.fx_as_of,
+        fx_source=quote.fx_source,
+        charge_note=charge_note,
     )
 
 from app.models.tenancy import OrganizationDomain

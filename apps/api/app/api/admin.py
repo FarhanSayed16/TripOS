@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from typing import List
+import uuid
 
 from app.api.deps import get_db, require_platform_admin
 from app.models.tenancy import User, Organization
@@ -405,12 +406,16 @@ async def list_suppliers(
     
     strategy = SupplierStrategy.get_strategy()
     configured_suppliers = settings.inventory_supplier_codes
-    
+
+    from app.services.supplier_metrics import supplier_metrics, last_offer_counts
+
+    # Platform L2B contribution is global; per-supplier from usage tables would be Phase later
     for code, adapter in AdapterRegistry._adapters.items():
         state = circuit_breaker.state.get(code, "CLOSED")
         is_open = circuit_breaker.is_open(code)
         failures = circuit_breaker.failures.get(code, 0)
         is_manual_override = circuit_breaker.manual_override.get(code, False)
+        metrics = supplier_metrics.snapshot(code)
         
         results.append({
             "code": code,
@@ -420,12 +425,137 @@ async def list_suppliers(
             "is_open": is_open,
             "failures": failures,
             "is_manual_override": is_manual_override,
-            "status": "Inactive" if is_manual_override else ("Failing" if is_open else "Active")
+            "status": "Inactive" if is_manual_override else ("Failing" if is_open else "Active"),
+            "health": metrics,
         })
         
     return {
         "global_strategy": strategy,
-        "suppliers": results
+        "suppliers": results,
+        "last_search_offer_counts": last_offer_counts(),
+    }
+
+
+@router.get("/suppliers/health")
+async def get_suppliers_health(
+    current_user: User = Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """FC Phase 2 — latency / error rates + circuit + L2B strip."""
+    from app.services.supplier_metrics import supplier_metrics
+    from app.services.supplier_usage import summarize_l2b
+
+    codes = list(AdapterRegistry._adapters.keys())
+    health = supplier_metrics.all_snapshots(codes)
+    l2b = await summarize_l2b(db, days=7)
+    from app.services.supplier_metrics import last_offer_counts
+
+    return {
+        "window_seconds": 3600,
+        "l2b_7d": l2b,
+        "suppliers": health,
+        "last_search_offer_counts": last_offer_counts(),
+    }
+
+
+@router.get("/refunds")
+async def admin_list_refunds(
+    status: str | None = None,
+    limit: int = 50,
+    current_user: User = Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """FC Phase 2 — refund queue for ops."""
+    from app.models.enums import RefundStatus
+    from app.services.refunds import list_refunds
+    from app.schemas.refunds import RefundResponse
+
+    status_enum = None
+    if status:
+        try:
+            status_enum = RefundStatus(status)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid refund status")
+    rows = await list_refunds(db, status=status_enum, limit=min(limit, 200))
+    out = []
+    for r in rows:
+        item = RefundResponse.model_validate(r).model_dump()
+        if r.payment:
+            item["quote_id"] = r.payment.quote_id
+        out.append(item)
+    return {"items": out, "count": len(out)}
+
+
+@router.post("/refunds/{refund_id}/status")
+async def admin_update_refund_status(
+    refund_id: str,
+    body: dict,
+    current_user: User = Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mark refund processing / succeeded / failed after gateway action."""
+    from app.models.enums import RefundStatus
+    from app.services.refunds import update_refund_status
+    from app.schemas.refunds import RefundResponse
+
+    try:
+        new_status = RefundStatus(body.get("status"))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    try:
+        refund = await update_refund_status(
+            db,
+            uuid.UUID(refund_id),
+            status=new_status,
+            notes=body.get("notes"),
+            gateway_refund_id=body.get("gateway_refund_id"),
+            actor_user_id=current_user.id,
+        )
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Refund not found")
+    await db.commit()
+    await db.refresh(refund)
+    return RefundResponse.model_validate(refund)
+
+
+@router.get("/audit/export")
+async def admin_audit_export(
+    days: int = 7,
+    limit: int = 500,
+    action_prefix: str | None = None,
+    current_user: User = Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """FC Phase 2 — export recent audit events for compliance / ops."""
+    from datetime import datetime, timedelta, timezone
+    from app.models.commercial import AuditEvent
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=max(1, min(days, 90)))
+    stmt = (
+        select(AuditEvent)
+        .where(AuditEvent.created_at >= cutoff)
+        .order_by(AuditEvent.created_at.desc())
+        .limit(min(limit, 2000))
+    )
+    if action_prefix:
+        stmt = stmt.where(AuditEvent.action.startswith(action_prefix))
+    rows = (await db.execute(stmt)).scalars().all()
+    return {
+        "window_days": days,
+        "count": len(rows),
+        "events": [
+            {
+                "id": str(e.id),
+                "organization_id": str(e.organization_id) if e.organization_id else None,
+                "actor_user_id": str(e.actor_user_id) if e.actor_user_id else None,
+                "action": e.action,
+                "entity_type": e.entity_type,
+                "entity_id": e.entity_id,
+                "metadata": e.metadata_payload,
+                "created_at": e.created_at.isoformat() if e.created_at else None,
+            }
+            for e in rows
+        ],
     }
 
 @router.post("/suppliers/{code}/toggle")
@@ -440,3 +570,86 @@ async def toggle_supplier(
         
     circuit_breaker.set_manual_override(code, disable)
     return {"status": "success", "code": code, "disabled": disable}
+
+
+# --- FC Phase 4: FX rates ---
+
+@router.get("/fx-rates")
+async def admin_list_fx_rates(
+    active_only: bool = False,
+    current_user: User = Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.fx import list_fx_rates
+    from app.core.config import settings
+
+    rows = await list_fx_rates(db, active_only=active_only)
+    return {
+        "charge_currency": settings.CHARGE_CURRENCY,
+        "fx_provider_enabled": settings.FX_PROVIDER_ENABLED,
+        "items": [
+            {
+                "id": str(r.id),
+                "base_currency": r.base_currency,
+                "quote_currency": r.quote_currency,
+                "rate": float(r.rate),
+                "as_of": r.as_of.isoformat() if r.as_of else None,
+                "source": r.source,
+                "is_active": r.is_active,
+            }
+            for r in rows
+        ],
+    }
+
+
+@router.post("/fx-rates")
+async def admin_upsert_fx_rate(
+    body: dict,
+    current_user: User = Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    from datetime import datetime
+    from app.services.fx import upsert_fx_rate
+
+    try:
+        as_of = body.get("as_of")
+        if isinstance(as_of, str):
+            as_of = datetime.fromisoformat(as_of.replace("Z", "+00:00"))
+        row = await upsert_fx_rate(
+            db,
+            base_currency=body.get("base_currency") or "INR",
+            quote_currency=body["quote_currency"],
+            rate=body["rate"],
+            source=body.get("source") or "manual",
+            as_of=as_of,
+            is_active=bool(body.get("is_active", True)),
+        )
+    except (KeyError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    await db.commit()
+    await db.refresh(row)
+    return {
+        "id": str(row.id),
+        "base_currency": row.base_currency,
+        "quote_currency": row.quote_currency,
+        "rate": float(row.rate),
+        "as_of": row.as_of.isoformat() if row.as_of else None,
+        "source": row.source,
+        "is_active": row.is_active,
+    }
+
+
+@router.post("/fx-rates/seed")
+async def admin_seed_fx_rates(
+    current_user: User = Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bootstrap illustrative INR→USD/AED/EUR/GBP rates for staging."""
+    from app.services.fx import seed_default_fx_rates
+
+    rows = await seed_default_fx_rates(db)
+    await db.commit()
+    return {
+        "seeded": len(rows),
+        "pairs": [f"{r.base_currency}/{r.quote_currency}" for r in rows],
+    }

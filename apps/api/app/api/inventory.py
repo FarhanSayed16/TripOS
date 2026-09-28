@@ -9,6 +9,7 @@ from app.schemas.inventory import (
     NormalizedOffer,
     InventoryType
 )
+from app.schemas.fare_rules import FareRulesRequest, FareRules
 from app.api.deps import require_active_org, get_db
 from app.models.tenancy import User
 from app.services.inventory import search_inventory, revalidate_offer
@@ -73,3 +74,14 @@ async def revalidate(
         usage_source="user_revalidate",
         org_id=user.active_organization_id,
     )
+
+
+@router.post("/fare-rules", response_model=FareRules)
+async def get_fare_rules(
+    request: FareRulesRequest,
+    user: User = Depends(require_active_org),
+):
+    """FC Phase 2 — fare rules / penalties for an offer (derived or supplier)."""
+    from app.services.fare_rules import get_fare_rules_for_offer
+
+    return await get_fare_rules_for_offer(request.offer)

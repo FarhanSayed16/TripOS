@@ -49,6 +49,13 @@ async def update_my_organization(
         org.logo_url = data.logo_url
     if data.primary_color is not None:
         org.primary_color = data.primary_color
+    if data.preferred_currency is not None:
+        from app.services.fx import normalize_currency
+
+        try:
+            org.preferred_currency = normalize_currency(data.preferred_currency)
+        except ValueError as e:
+            raise AppError(str(e), status_code=400, error_code="INVALID_CURRENCY") from e
         
     await db.commit()
     await db.refresh(org)

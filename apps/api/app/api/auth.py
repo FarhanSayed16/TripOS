@@ -20,6 +20,7 @@ from app.schemas.auth import (
     LoginRequest,
     TokenResponse,
     UserResponse,
+    UserPreferencesUpdate,
     SignupRequest,
     VerifyRequest,
     ForgotPasswordRequest,
@@ -78,6 +79,7 @@ def _user_response(user: User, org_status: str | None = None) -> UserResponse:
         org_role=org_role,
         org_status=org_status,
         is_platform_admin=bool(user.is_platform_admin),
+        preferred_currency=getattr(user, "preferred_currency", None),
     )
 
 
@@ -256,6 +258,36 @@ async def get_me(
             )
 
     return _user_response(user, org_status=org_status)
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_me_preferences(
+    data: UserPreferencesUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """FC Phase 4 — optional user display-currency override (null clears)."""
+    stmt = (
+        select(User)
+        .options(selectinload(User.memberships).selectinload(OrganizationMember.organization))
+        .where(User.id == current_user.id)
+    )
+    user = (await db.execute(stmt)).scalar_one()
+    if "preferred_currency" in data.model_fields_set:
+        if data.preferred_currency is None or data.preferred_currency == "":
+            user.preferred_currency = None
+        else:
+            from app.services.fx import normalize_currency
+            from app.core.exceptions import AppError
+
+            try:
+                user.preferred_currency = normalize_currency(data.preferred_currency)
+            except ValueError as e:
+                raise AppError(str(e), status_code=400, error_code="INVALID_CURRENCY") from e
+    await db.commit()
+    await db.refresh(user)
+    user.active_organization_id = getattr(current_user, "active_organization_id", None)
+    return _user_response(user)
 
 
 @router.post("/forgot-password")
