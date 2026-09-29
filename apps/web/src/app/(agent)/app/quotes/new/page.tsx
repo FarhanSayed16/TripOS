@@ -321,7 +321,7 @@ export default function QuoteBuilder() {
                           setPassengers(newP);
                         }}
                         required
-                        className="bg-white"
+                        className="bg-paper"
                         placeholder="e.g. John"
                       />
                     </div>
@@ -335,7 +335,7 @@ export default function QuoteBuilder() {
                           setPassengers(newP);
                         }}
                         required
-                        className="bg-white"
+                        className="bg-paper"
                         placeholder="e.g. Doe"
                       />
                     </div>

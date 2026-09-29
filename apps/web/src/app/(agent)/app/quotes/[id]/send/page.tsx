@@ -28,7 +28,7 @@ export default function SendQuotePage({ params }: { params: Promise<{ id: string
   }, [preview]);
 
   if (isLoading) {
-    return <div className="p-8 text-center text-gray-500">Loading preview...</div>;
+    return <div className="p-8 text-center text-muted-foreground">Loading preview...</div>;
   }
 
   if (error || !preview) {
@@ -72,7 +72,7 @@ export default function SendQuotePage({ params }: { params: Promise<{ id: string
         </Button>
         <div>
           <h1 className="page-title">Send Quote</h1>
-          <p className="text-gray-500">Review and send via WhatsApp.</p>
+          <p className="text-muted-foreground">Review and send via WhatsApp.</p>
         </div>
       </div>
 

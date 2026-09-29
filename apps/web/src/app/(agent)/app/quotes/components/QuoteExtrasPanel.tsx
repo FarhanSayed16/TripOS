@@ -118,7 +118,7 @@ export function QuoteExtrasPanel({
       </CardHeader>
       <CardContent className="space-y-4">
         {offer?.fare_family && (
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Fare family: <Badge variant="outline">{offer.fare_family}</Badge>
             {offer.cabin ? ` · ${offer.cabin}` : ""}
             {offer.baggage?.checked_kg != null
@@ -133,7 +133,7 @@ export function QuoteExtrasPanel({
               <li key={`${e.type}-${e.code}`} className="flex justify-between">
                 <span>
                   {e.label}
-                  <span className="text-xs text-gray-400 ml-2">{e.type}</span>
+                  <span className="text-xs text-muted-foreground/60 ml-2">{e.type}</span>
                 </span>
                 <span className="font-mono">
                   {formatPaiseAsMoney(e.amount_paise)}
@@ -149,10 +149,10 @@ export function QuoteExtrasPanel({
 
         {editable && catalog?.supported && (
           <div className="space-y-2">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Baggage / meals / SSR
             </p>
-            {loadingAnc && <p className="text-xs text-gray-400">Loading options…</p>}
+            {loadingAnc && <p className="text-xs text-muted-foreground/60">Loading options…</p>}
             <div className="grid gap-2 sm:grid-cols-2">
               {(catalog.items || []).map((opt) => {
                 const on = selected.some(
@@ -170,7 +170,7 @@ export function QuoteExtrasPanel({
                     }`}
                   >
                     <div className="font-medium">{opt.label}</div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-muted-foreground">
                       {opt.currency} {opt.amount.toLocaleString()}
                       {opt.description ? ` · ${opt.description}` : ""}
                     </div>
@@ -183,15 +183,15 @@ export function QuoteExtrasPanel({
 
         {editable && seatMap?.supported && (
           <div className="space-y-2">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Seat map
             </p>
-            {loadingSeats && <p className="text-xs text-gray-400">Loading seats…</p>}
+            {loadingSeats && <p className="text-xs text-muted-foreground/60">Loading seats…</p>}
             <div className="overflow-x-auto">
               <div className="inline-flex flex-col gap-1 font-mono text-xs">
                 {(seatMap.rows || []).map((row) => (
                   <div key={row.row} className="flex gap-1 items-center">
-                    <span className="w-6 text-gray-400">{row.row}</span>
+                    <span className="w-6 text-muted-foreground/60">{row.row}</span>
                     {row.seats.map((cell) => {
                       const picked = selected.some(
                         (s) => s.type === "seat" && s.code === cell.seat
@@ -205,10 +205,10 @@ export function QuoteExtrasPanel({
                           title={`${cell.seat} · ${cell.amount}`}
                           className={`w-8 h-8 rounded border text-[10px] ${
                             !cell.available
-                              ? "bg-gray-100 text-gray-300 border-gray-100"
+                              ? "bg-surface text-muted-foreground/40 border-line/50"
                               : picked
                                 ? "bg-focus text-white border-focus"
-                                : "bg-white border-line hover:border-focus"
+                                : "bg-paper border-line hover:border-focus"
                           }`}
                         >
                           {cell.seat.slice(-1)}
@@ -223,7 +223,7 @@ export function QuoteExtrasPanel({
         )}
 
         {!editable && (!item.extras || item.extras.length === 0) && (
-          <p className="text-sm text-gray-500">No extras on this item.</p>
+          <p className="text-sm text-muted-foreground">No extras on this item.</p>
         )}
 
         {editable && (

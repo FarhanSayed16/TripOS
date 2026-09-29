@@ -30,7 +30,7 @@ export function HotelSearchForm({ onSearch, isLoading }: HotelSearchFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col md:flex-row items-center bg-white rounded-2xl md:rounded-full border border-line p-2 shadow-lg max-w-5xl mx-auto">
+    <form onSubmit={handleSubmit} className="flex flex-col md:flex-row items-center bg-paper rounded-2xl md:rounded-full border border-line p-2 shadow-lg max-w-5xl mx-auto">
       <div className="flex-1 flex flex-col px-6 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl md:rounded-full transition-colors cursor-pointer group">
         <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
           <Building2 className="w-3.5 h-3.5" /> Destination

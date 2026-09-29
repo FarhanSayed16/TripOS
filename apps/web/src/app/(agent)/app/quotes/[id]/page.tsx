@@ -140,7 +140,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
           {(fareChange?.previous_total_paise != null || fareChange?.new_total_paise != null) && (
             <div className="grid grid-cols-2 gap-3 text-sm py-2">
               <div className="rounded-lg border border-line bg-sand/30 p-3">
-                <p className="text-xs text-gray-500 mb-1">Previous fare</p>
+                <p className="text-xs text-muted-foreground mb-1">Previous fare</p>
                 <p className="font-semibold text-ink">
                   {fareChange.previous_total_paise != null
                     ? formatPaise(fareChange.previous_total_paise)
@@ -200,7 +200,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
               <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">Confirmed Booking</Badge>
             )}
             {quote.booking?.status === 'cancelled' && (
-              <Badge className="bg-gray-100 text-gray-800 border-gray-200">Cancelled Booking</Badge>
+              <Badge className="bg-surface text-ink border-line">Cancelled Booking</Badge>
             )}
           </div>
           <p className="text-sm text-muted-foreground flex items-center gap-2">
@@ -398,7 +398,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
         </div>
 
         {/* 3. Right Summary Block */}
-        <div className="space-y-6">
+        <div className="space-y-6 lg:sticky lg:top-24 lg:self-start">
           
           {/* Contact Details Card */}
           <Card className="border-line shadow-sm bg-surface">
@@ -438,12 +438,53 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
 
           {/* Payment & Invoice Card */}
           <Card className="border-line shadow-sm bg-surface overflow-hidden">
-            <div className={`px-5 py-3 ${quote.status === 'paid' ? 'bg-mint text-mint-foreground' : 'bg-gray-100 text-gray-700'} border-b border-line`}>
+            <div className={`px-5 py-3 ${quote.status === 'paid' ? 'bg-mint text-mint-foreground' : 'bg-surface text-ink/80'} border-b border-line`}>
               <h3 className="font-semibold text-sm">Payment Status: {quote.status === 'paid' ? 'Paid' : 'Pending'}</h3>
             </div>
             <CardContent className="p-5 space-y-4">
-              <div className="flex justify-between items-end border-b border-line pb-4">
-                <span className="font-medium text-ink">Total Amount</span>
+              {/* Markup Ladder (§6.5) */}
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Supplier Cost</span>
+                  <span className="font-mono">
+                    {formatPaiseAsMoney(
+                      quote.items.reduce((s, i) => s + (i.supplier_total ?? i.customer_total), 0),
+                      { currency: quote.charge_currency || "INR" }
+                    )}
+                  </span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Platform Fee</span>
+                  <span className="font-mono">
+                    {formatPaiseAsMoney(
+                      quote.items.reduce((s, i) => s + (i.platform_fee ?? 0), 0),
+                      { currency: quote.charge_currency || "INR" }
+                    )}
+                  </span>
+                </div>
+                <div className="flex justify-between text-ink font-medium">
+                  <span>Agent Markup</span>
+                  <span className="font-mono text-teal">
+                    {formatPaiseAsMoney(
+                      quote.items.reduce((s, i) => s + (i.agent_markup ?? 0), 0),
+                      { currency: quote.charge_currency || "INR" }
+                    )}
+                  </span>
+                </div>
+                {quote.items.some(i => (i.extras_total ?? 0) > 0) && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Extras (Ancillaries)</span>
+                    <span className="font-mono">
+                      {formatPaiseAsMoney(
+                        quote.items.reduce((s, i) => s + (i.extras_total ?? 0), 0),
+                        { currency: quote.charge_currency || "INR" }
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-between items-end border-t border-line pt-4">
+                <span className="font-semibold text-ink">Customer Total</span>
                 <span className="text-2xl font-bold font-mono tracking-tight text-ink">
                   {quote.items[0]?.money
                     ? formatMoney({
@@ -466,6 +507,47 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             </CardContent>
           </Card>
 
+          {/* Meta Card (§6.6) */}
+          <Card className="border-line shadow-sm bg-surface">
+            <CardHeader className="pb-3 border-b border-line bg-paper/50">
+              <CardTitle className="text-sm font-semibold text-ink">Quote Details</CardTitle>
+            </CardHeader>
+            <CardContent className="p-5">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="stat-label">Inventory Mode</span>
+                  <p className="font-medium text-ink mt-0.5 capitalize">
+                    {quote.items[0]?.offer_snapshot?.inventory_mode || "live"}
+                  </p>
+                </div>
+                <div>
+                  <span className="stat-label">Fare Family</span>
+                  <p className="font-medium text-ink mt-0.5">
+                    {quote.items[0]?.offer_snapshot?.fare_family || "—"}
+                  </p>
+                </div>
+                <div>
+                  <span className="stat-label">Deal Code</span>
+                  <p className="font-medium font-mono text-ink mt-0.5">
+                    {quote.items[0]?.offer_snapshot?.deal_code || "None"}
+                  </p>
+                </div>
+                <div>
+                  <span className="stat-label">Valid Until</span>
+                  <p className="font-medium text-ink mt-0.5">
+                    {format(new Date(quote.valid_until), "MMM d, h:mm a")}
+                  </p>
+                </div>
+                <div className="col-span-2">
+                  <span className="stat-label">Created By</span>
+                  <p className="font-medium text-ink mt-0.5">
+                    {quote.created_by_email || quote.created_by || "Agent"}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Quote Activity Timeline */}
           <Card className="border-line shadow-sm bg-surface">
             <CardHeader className="pb-3 border-b border-line bg-paper/50">
@@ -479,7 +561,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
                   <p className="text-xs text-muted-foreground">{format(new Date(quote.created_at), "MMM d, h:mm a")}</p>
                 </div>
                 {auditEvents?.map((event) => {
-                  let color = "bg-gray-400";
+                  let color = "bg-muted-foreground";
                   let title = event.action;
                   if (title.startsWith("booking.failed") || title === "cancel.requested" || title === "payment_captured_quote_expired") color = "bg-coral";
                   if (title === "booking.confirmed") color = "bg-mint";
