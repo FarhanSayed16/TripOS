@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import { useGetBookingsQuery } from "@/lib/api/bookingsApi";
 import { useGetQuotesQuery } from "@/lib/api/quotesApi";
+import { useGetCustomersQuery } from "@/lib/api/crmApi";
+import { useGetWalletSummaryQuery } from "@/lib/api/walletApi";
 import { useAuth } from "@/contexts/AuthContext";
 import { StaggerContainer } from "@/components/PageTransition";
 import { Badge } from "@/components/ui/badge";
@@ -26,12 +28,17 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useMemo } from "react";
+import { format } from "date-fns";
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const { data: failed = [], isLoading: loadingFailed } = useGetBookingsQuery({ status: "failed" });
   const { data: pendingBookings = [], isLoading: loadingPending } = useGetBookingsQuery({ status: "pending" });
+  const { data: allBookings = [] } = useGetBookingsQuery(undefined);
   const { data: paidQuotes, isLoading: loadingPaid } = useGetQuotesQuery({ status: "paid" });
+  const { data: customersData } = useGetCustomersQuery({ limit: 1 });
+  const { data: walletSummary } = useGetWalletSummaryQuery();
 
   const awaitingConfirm = (paidQuotes?.items || []).filter(
     (q) => !q.booking || q.booking.status === "pending"
@@ -41,6 +48,34 @@ export default function DashboardPage() {
 
   const loading = loadingFailed || loadingPending || loadingPaid;
   const attentionCount = failed.length + awaitingConfirm.length + extraPending.length;
+
+  // Computed KPIs from live data
+  const bookingCount = allBookings.length;
+  const gmvPaise = useMemo(() => allBookings.reduce((s, b) => s + (b.quote?.total_amount || 0), 0), [allBookings]);
+  const gmvFormatted = useMemo(() => {
+    const val = gmvPaise / 100;
+    if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L`;
+    if (val >= 1000) return `₹${(val / 1000).toFixed(1)}K`;
+    return `₹${val.toLocaleString()}`;
+  }, [gmvPaise]);
+  const walletBalance = useMemo(() => {
+    const val = (walletSummary?.available_paise || 0) / 100;
+    if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L`;
+    if (val >= 1000) return `₹${(val / 1000).toFixed(1)}K`;
+    return `₹${val.toLocaleString()}`;
+  }, [walletSummary]);
+  const walletPending = useMemo(() => {
+    const val = (walletSummary?.pending_paise || 0) / 100;
+    return `₹${val.toLocaleString()}`;
+  }, [walletSummary]);
+  const customerCount = customersData?.total ?? customersData?.items?.length ?? 0;
+
+  // Recent bookings — latest 5
+  const recentBookings = useMemo(() => {
+    return [...allBookings]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 5);
+  }, [allBookings]);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -116,28 +151,29 @@ export default function DashboardPage() {
           <div className="card-stat p-5">
             <div className="stat-label">Bookings</div>
             <div className="mt-2 flex items-end justify-between">
-              <span className="stat-value text-ink">124</span>
-              <span className="text-xs font-medium text-mint flex items-center"><TrendingUp className="w-3 h-3 mr-1"/> +12%</span>
+              <span className="stat-value text-ink">{bookingCount}</span>
+              <Calendar className="w-5 h-5 text-muted-foreground/40" />
             </div>
           </div>
           <div className="card-stat p-5">
-            <div className="stat-label">GMV (30d)</div>
+            <div className="stat-label">GMV (all time)</div>
             <div className="mt-2 flex items-end justify-between">
-              <span className="stat-value text-ink">₹8.4L</span>
-              <span className="text-xs font-medium text-mint flex items-center"><TrendingUp className="w-3 h-3 mr-1"/> +5%</span>
+              <span className="stat-value text-ink">{gmvFormatted}</span>
+              <TrendingUp className="w-5 h-5 text-mint/40" />
             </div>
           </div>
           <div className="card-stat p-5">
             <div className="stat-label">Wallet Balance</div>
             <div className="mt-2 flex items-end justify-between">
-              <span className="stat-value text-ink">₹1.2L</span>
+              <span className="stat-value text-ink">{walletBalance}</span>
+              <Wallet className="w-5 h-5 text-muted-foreground/40" />
             </div>
           </div>
           <div className="card-stat p-5">
             <div className="stat-label">Customers</div>
             <div className="mt-2 flex items-end justify-between">
-              <span className="stat-value text-ink">45</span>
-              <span className="text-xs font-medium text-mint flex items-center"><TrendingUp className="w-3 h-3 mr-1"/> +2</span>
+              <span className="stat-value text-ink">{customerCount}</span>
+              <Users className="w-5 h-5 text-muted-foreground/40" />
             </div>
           </div>
         </StaggerContainer>
@@ -180,50 +216,46 @@ export default function DashboardPage() {
             <h2 className="section-title">Recent Bookings</h2>
             <Link href="/app/bookings" className="text-sm font-medium text-teal hover:underline">View all</Link>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Customer</TableHead>
-                <TableHead>Route</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>PNR</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow>
-                <TableCell>John Doe</TableCell>
-                <TableCell>DEL &rarr; BOM</TableCell>
-                <TableCell><Badge variant="confirmed">Confirmed</Badge></TableCell>
-                <TableCell>X89B2M</TableCell>
-                <TableCell className="text-right">₹12,450</TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" className="text-teal">Open quote</Button>
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>Acme Corp</TableCell>
-                <TableCell>BLR &rarr; DXB</TableCell>
-                <TableCell><Badge variant="pending">Pending</Badge></TableCell>
-                <TableCell>—</TableCell>
-                <TableCell className="text-right">₹45,800</TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" className="text-teal">Open quote</Button>
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>Jane Smith</TableCell>
-                <TableCell>BOM &rarr; LHR</TableCell>
-                <TableCell><Badge variant="live">Live</Badge></TableCell>
-                <TableCell>Y7T89Q</TableCell>
-                <TableCell className="text-right">₹89,200</TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" className="text-teal">Open quote</Button>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+          {recentBookings.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground text-sm">
+              No bookings yet. Search inventory to get started.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Route</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>PNR</TableHead>
+                  <TableHead className="text-right">Date</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentBookings.map((booking) => (
+                  <TableRow key={booking.id}>
+                    <TableCell>{booking.quote?.customer_name || "Customer"}</TableCell>
+                    <TableCell>{booking.quote?.route || "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant={booking.status === "confirmed" ? "confirmed" : booking.status === "failed" ? "destructive" : "pending"}>
+                        {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-mono">{booking.supplier_pnr || "—"}</TableCell>
+                    <TableCell className="text-right text-muted-foreground text-sm">
+                      {format(new Date(booking.created_at), "MMM d")}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" className="text-teal" asChild>
+                        <Link href={`/app/quotes/${booking.quote_id}`}>Open quote</Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </div>
 
       </div>
@@ -239,14 +271,14 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold font-mono text-ink tracking-tight mb-4">₹1,24,500</div>
+            <div className="text-3xl font-bold font-mono text-ink tracking-tight mb-4">{walletBalance}</div>
             <div className="flex gap-2">
               <Button variant="default" className="w-full bg-ink text-white hover:bg-ink/90">Add money</Button>
             </div>
             <div className="mt-4 pt-4 border-t border-line">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Pending settlements</span>
-                <span className="font-medium font-mono text-amber-600">₹45,800</span>
+                <span className="font-medium font-mono text-amber-600">{walletPending}</span>
               </div>
             </div>
           </CardContent>
@@ -260,27 +292,33 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-3 items-start">
-              <div className="h-2 w-2 rounded-full bg-teal mt-1.5 flex-shrink-0" />
-              <div>
-                <p className="text-sm text-ink leading-tight">Your markup rules have been updated.</p>
-                <span className="text-xs text-muted-foreground">2 hours ago</span>
+            {failed.length > 0 && (
+              <div className="flex gap-3 items-start">
+                <div className="h-2 w-2 rounded-full bg-coral mt-1.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm text-ink leading-tight">{failed.length} booking{failed.length !== 1 ? "s" : ""} failed — check Bookings ledger.</p>
+                  <span className="text-xs text-muted-foreground">Recent</span>
+                </div>
               </div>
-            </div>
-            <div className="flex gap-3 items-start">
-              <div className="h-2 w-2 rounded-full bg-coral mt-1.5 flex-shrink-0" />
-              <div>
-                <p className="text-sm text-ink leading-tight">Payment failed for Acme Corp booking.</p>
-                <span className="text-xs text-muted-foreground">5 hours ago</span>
+            )}
+            {awaitingConfirm.length > 0 && (
+              <div className="flex gap-3 items-start">
+                <div className="h-2 w-2 rounded-full bg-amber-400 mt-1.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm text-ink leading-tight">{awaitingConfirm.length} quote{awaitingConfirm.length !== 1 ? "s" : ""} paid, awaiting confirmation.</p>
+                  <span className="text-xs text-muted-foreground">Recent</span>
+                </div>
               </div>
-            </div>
-            <div className="flex gap-3 items-start">
-              <div className="h-2 w-2 rounded-full bg-line mt-1.5 flex-shrink-0" />
-              <div>
-                <p className="text-sm text-ink leading-tight">System maintenance scheduled for Sunday.</p>
-                <span className="text-xs text-muted-foreground">1 day ago</span>
+            )}
+            {failed.length === 0 && awaitingConfirm.length === 0 && (
+              <div className="flex gap-3 items-start">
+                <div className="h-2 w-2 rounded-full bg-mint mt-1.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm text-ink leading-tight">All caught up — no pending actions.</p>
+                  <span className="text-xs text-muted-foreground">Now</span>
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 

@@ -32,7 +32,7 @@ export default function AgentLayout({
   const { isAuthenticated, isLoading, logout, user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const { t } = useI18n();
+  const { t, locale, setLocale } = useI18n();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -214,8 +214,8 @@ export default function AgentLayout({
             </button>
             
             <div className="hidden sm:flex items-center bg-paper border border-line rounded-md p-0.5">
-              <button className="px-2.5 py-1 text-[11px] font-medium rounded bg-surface shadow-sm text-ink">EN</button>
-              <button className="px-2.5 py-1 text-[11px] font-medium rounded text-muted-foreground hover:text-ink">HI</button>
+              <button onClick={() => setLocale('en')} className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors ${locale === 'en' ? 'bg-surface shadow-sm text-ink' : 'text-muted-foreground hover:text-ink'}`}>EN</button>
+              <button onClick={() => setLocale('hi')} className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors ${locale === 'hi' ? 'bg-surface shadow-sm text-ink' : 'text-muted-foreground hover:text-ink'}`}>HI</button>
             </div>
 
             <button className="relative p-2 rounded-full hover:bg-muted/50 transition-colors">

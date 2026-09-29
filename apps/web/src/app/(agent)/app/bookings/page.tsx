@@ -1,16 +1,28 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useGetBookingsQuery } from "@/lib/api/bookingsApi";
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle, CheckCircle, Clock, XCircle } from "lucide-react";
+import { AlertCircle, CheckCircle, Clock, XCircle, CalendarDays, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 import { formatFailureReason } from "@/lib/failureLabels";
+import { StaggerContainer } from "@/components/PageTransition";
 
 export default function BookingsDashboard() {
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const { data: bookings, isLoading } = useGetBookingsQuery(statusFilter ? { status: statusFilter } : undefined);
+  const { data: allBookings } = useGetBookingsQuery(undefined);
+
+  // KPI calculations
+  const kpis = useMemo(() => {
+    if (!allBookings) return { total: 0, confirmed: 0, pending: 0, failed: 0 };
+    return {
+      total: allBookings.length,
+      confirmed: allBookings.filter(b => b.status === "confirmed").length,
+      pending: allBookings.filter(b => b.status === "pending").length,
+      failed: allBookings.filter(b => b.status === "failed").length,
+    };
+  }, [allBookings]);
 
   if (isLoading) {
     return (
@@ -28,13 +40,13 @@ export default function BookingsDashboard() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "confirmed":
-        return <CheckCircle className="w-4 h-4 text-green-500 mr-2" />;
+        return <CheckCircle className="w-4 h-4 text-mint mr-2" />;
       case "failed":
-        return <AlertCircle className="w-4 h-4 text-red-500 mr-2" />;
+        return <AlertCircle className="w-4 h-4 text-coral mr-2" />;
       case "pending":
-        return <Clock className="w-4 h-4 text-yellow-500 mr-2" />;
+        return <Clock className="w-4 h-4 text-amber-500 mr-2" />;
       case "cancelled":
-        return <XCircle className="w-4 h-4 text-gray-500 mr-2" />;
+        return <XCircle className="w-4 h-4 text-muted-foreground mr-2" />;
       default:
         return null;
     }
@@ -43,20 +55,20 @@ export default function BookingsDashboard() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "confirmed":
-        return "bg-green-100 text-green-800 border-green-200";
+        return "bg-mint/10 text-mint border-mint/20";
       case "failed":
-        return "bg-red-100 text-red-800 border-red-200";
+        return "bg-coral/10 text-coral border-coral/20";
       case "pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+        return "bg-amber-500/10 text-amber-700 border-amber-500/20";
       case "cancelled":
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "bg-surface text-muted-foreground border-line";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-surface text-muted-foreground border-line";
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="page-title">Bookings Ledger</h1>
@@ -73,7 +85,7 @@ export default function BookingsDashboard() {
               onClick={() => setStatusFilter(s === "All" ? undefined : s)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all capitalize whitespace-nowrap border ${
                 (statusFilter === s || (s === "All" && !statusFilter))
-                  ? "bg-teal-50 border-teal-200 text-teal-800 shadow-sm" 
+                  ? "bg-teal/10 border-teal/20 text-teal shadow-sm" 
                   : "bg-paper/50 border-line/50 text-muted-foreground hover:bg-paper hover:text-ink hover:border-line"
               }`}
             >
@@ -83,7 +95,39 @@ export default function BookingsDashboard() {
         </div>
       </div>
 
-      <div className="table-container">
+      {/* KPI Strip (§8.2) */}
+      <StaggerContainer className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="card-stat p-5">
+          <div className="stat-label">Total Bookings</div>
+          <div className="mt-2 flex items-end justify-between">
+            <span className="stat-value text-ink">{kpis.total}</span>
+            <CalendarDays className="w-5 h-5 text-muted-foreground/40" />
+          </div>
+        </div>
+        <div className="card-stat accent-green p-5">
+          <div className="stat-label">Confirmed</div>
+          <div className="mt-2 flex items-end justify-between">
+            <span className="stat-value text-mint">{kpis.confirmed}</span>
+            <CheckCircle className="w-5 h-5 text-mint/40" />
+          </div>
+        </div>
+        <div className="card-stat accent-amber p-5">
+          <div className="stat-label">Pending</div>
+          <div className="mt-2 flex items-end justify-between">
+            <span className="stat-value text-amber-500">{kpis.pending}</span>
+            <Clock className="w-5 h-5 text-amber-500/40" />
+          </div>
+        </div>
+        <div className="card-stat accent-coral p-5">
+          <div className="stat-label">Failed</div>
+          <div className="mt-2 flex items-end justify-between">
+            <span className="stat-value text-coral">{kpis.failed}</span>
+            <AlertCircle className="w-5 h-5 text-coral/40" />
+          </div>
+        </div>
+      </StaggerContainer>
+
+      <div className="table-container table-card-mobile">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="table-header bg-surface/50 border-b border-line">
@@ -95,44 +139,44 @@ export default function BookingsDashboard() {
                   <th className="px-6 py-4 font-medium text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-line bg-white">
+              <tbody className="divide-y divide-line bg-paper">
                 {bookings?.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
                       No bookings found.
                     </td>
                   </tr>
                 ) : (
                   bookings?.map((booking) => (
                     <tr key={booking.id} className="table-row-interactive">
-                      <td className="px-6 py-4">
+                      <td data-label="Customer" className="px-6 py-4">
                         <div className="font-medium text-ink">{booking.quote?.customer_name || "Unknown Customer"}</div>
-                        <div className="text-xs text-gray-500 font-mono mt-1">Quote {booking.quote_id.split("-")[0]}</div>
+                        <div className="text-xs text-muted-foreground font-mono mt-1">Quote {booking.quote_id.split("-")[0]}</div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td data-label="Status" className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusBadge(booking.status)}`}>
                           {getStatusIcon(booking.status)}
                           {booking.status.toUpperCase()}
                         </span>
                         {booking.failure_reason && (
-                          <div className="text-xs text-red-600 mt-1 max-w-[240px]">
+                          <div className="text-xs text-coral mt-1 max-w-[240px]">
                             {booking.failure_label || formatFailureReason(booking.failure_reason)}
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4">
+                      <td data-label="PNR" className="px-6 py-4">
                         {booking.supplier_pnr ? (
                           <span className="font-mono bg-teal/5 text-teal px-2.5 py-1 rounded-md text-xs border border-teal/15">
                             {booking.supplier_pnr}
                           </span>
                         ) : (
-                          <span className="text-gray-400 italic">None</span>
+                          <span className="text-muted-foreground/60 italic">None</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-gray-500">
+                      <td data-label="Date" className="px-6 py-4 text-muted-foreground">
                         {format(new Date(booking.created_at), "MMM d, h:mm a")}
                       </td>
-                      <td className="px-6 py-4 text-right space-x-3">
+                      <td data-label="" className="px-6 py-4 text-right space-x-3">
                         {booking.status === "confirmed" && (
                           <Link
                             href={`/app/bookings/${booking.id}/change`}

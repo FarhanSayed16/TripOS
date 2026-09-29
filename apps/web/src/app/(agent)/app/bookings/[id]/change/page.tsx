@@ -89,7 +89,7 @@ export default function BookingChangePage() {
         </p>
       </div>
 
-      <div className="rounded-xl border border-line bg-white p-5 space-y-4">
+      <div className="rounded-xl border border-line bg-paper p-5 space-y-4">
         <label className="block text-sm font-medium">
           Change type
           <select
@@ -128,7 +128,7 @@ export default function BookingChangePage() {
       )}
 
       {result && (
-        <div className="rounded-xl border border-line bg-white p-5 space-y-3">
+        <div className="rounded-xl border border-line bg-paper p-5 space-y-3">
           <p className="text-sm font-medium">
             Status: <span className="uppercase">{result.status}</span>
           </p>
