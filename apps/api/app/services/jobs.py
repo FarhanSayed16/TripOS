@@ -120,19 +120,37 @@ async def _upsert_failed_booking(
         await _notify_agent_booking(
             db, quote, confirmed=False, reason=reason.value
         )
-        return quote.booking
-    booking = Booking(
-        quote_id=quote.id,
-        organization_id=quote.organization_id,
-        status=BookingStatus.failed,
-        failure_reason=reason,
-        supplier_code=supplier_code,
-    )
-    db.add(booking)
-    quote.booking = booking
-    await _notify_agent_booking(
-        db, quote, confirmed=False, reason=reason.value
-    )
+        booking = quote.booking
+    else:
+        booking = Booking(
+            quote_id=quote.id,
+            organization_id=quote.organization_id,
+            status=BookingStatus.failed,
+            failure_reason=reason,
+            supplier_code=supplier_code,
+        )
+        db.add(booking)
+        quote.booking = booking
+        await _notify_agent_booking(
+            db, quote, confirmed=False, reason=reason.value
+        )
+
+    try:
+        from app.services.partner_webhooks import dispatch_partner_event
+
+        await dispatch_partner_event(
+            db,
+            quote.organization_id,
+            "booking.failed",
+            {
+                "quote_id": str(quote.id),
+                "booking_id": str(booking.id) if booking else None,
+                "status": "failed",
+                "failure_reason": reason.value if hasattr(reason, "value") else str(reason),
+            },
+        )
+    except Exception as e:
+        logger.warning("partner_webhook_dispatch_failed", error=str(e), event="booking.failed")
     return booking
 
 
@@ -258,6 +276,12 @@ async def handle_booking_confirm(payload: dict, db: AsyncSession):
                 continue
 
             offer_obj = NormalizedOffer.model_validate(item.offer_snapshot.offer_data)
+            # FC Phase 6 — ensure selected extras ride into book payload
+            from app.services.ancillaries import attach_extras_to_offer
+
+            offer_obj = attach_extras_to_offer(
+                offer_obj, getattr(item, "extras", None) or []
+            )
 
             try:
                 await revalidate_normalized_offer(
@@ -408,6 +432,22 @@ async def handle_booking_confirm(payload: dict, db: AsyncSession):
     await _notify_agent_booking(
         db, quote, confirmed=True, pnr=primary_pnr
     )
+    try:
+        from app.services.partner_webhooks import dispatch_partner_event
+
+        await dispatch_partner_event(
+            db,
+            quote.organization_id,
+            "booking.confirmed",
+            {
+                "quote_id": str(quote.id),
+                "booking_id": str(booking_obj.id),
+                "supplier_pnr": primary_pnr,
+                "status": "confirmed",
+            },
+        )
+    except Exception as e:
+        logger.warning("partner_webhook_dispatch_failed", error=str(e), event="booking.confirmed")
     logger.info(
         "booking_confirm_done",
         quote_id=quote_id,

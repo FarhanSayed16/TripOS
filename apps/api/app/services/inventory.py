@@ -26,6 +26,53 @@ logger = structlog.get_logger()
 from app.services.supplier_strategy import SupplierStrategy
 from app.core.circuit_breaker import circuit_breaker
 
+
+async def _apply_org_search_enrichment(
+    query: SearchQuery,
+    org_id,
+    db: AsyncSession,
+    *,
+    usage_source: str,
+) -> SearchQuery:
+    """FC Phase 7 — org deal codes + opt-in AI preference filters."""
+    if not org_id:
+        return query
+    from app.models.tenancy import Organization
+
+    org = await db.get(Organization, org_id)
+    if not org:
+        return query
+
+    updates: dict = {}
+    org_codes = list(org.deal_codes or []) if isinstance(org.deal_codes, list) else []
+    if query.deal_code:
+        updates["deal_codes"] = [query.deal_code] + [c for c in org_codes if c != query.deal_code]
+    elif org_codes and not query.deal_codes:
+        updates["deal_codes"] = org_codes
+        updates["deal_code"] = str(org_codes[0])
+
+    prefs = org.ai_preferences if isinstance(org.ai_preferences, dict) else None
+    if (
+        settings.FC_AI_PREFERENCES_ENABLED
+        and prefs
+        and prefs.get("enabled")
+        and usage_source == "ai_search"
+    ):
+        if query.max_stops is None and prefs.get("max_stops") is not None:
+            try:
+                updates["max_stops"] = int(prefs["max_stops"])
+            except (TypeError, ValueError):
+                pass
+        if not query.airlines and prefs.get("preferred_airlines"):
+            airlines = prefs["preferred_airlines"]
+            if isinstance(airlines, list):
+                updates["airlines"] = [str(a).upper() for a in airlines if a]
+
+    if not updates:
+        return query
+    return query.model_copy(update=updates)
+
+
 async def search_inventory(
     query: SearchQuery,
     current_user: User,
@@ -45,6 +92,9 @@ async def search_inventory(
     active_supplier_codes = await strategy.select_for_search(query)
     logger.info("inventory_search_suppliers", suppliers=active_supplier_codes, strategy=mode)
     org_id = current_user.active_organization_id
+
+    # FC Phase 7 — merge org deal codes + optional AI preferences
+    query = await _apply_org_search_enrichment(query, org_id, db, usage_source=usage_source)
 
     live_policy, l2b_summary = await get_org_live_search_policy(
         db, org_id, usage_source=usage_source
@@ -318,6 +368,8 @@ async def search_inventory(
         fx_rate=float(fx_meta.rate) if fx_meta else None,
         fx_as_of=fx_meta.as_of.isoformat() if fx_meta and fx_meta.as_of else None,
         fx_source=fx_meta.source if fx_meta else None,
+        ancillaries_enabled=bool(settings.FC_ANCILLARIES_ENABLED),
+        seat_map_enabled=bool(settings.FC_SEAT_MAP_ENABLED),
     )
 
 

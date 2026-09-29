@@ -163,8 +163,10 @@ def flight_fingerprint(offer: NormalizedOffer) -> str:
     dep = o.depart_time or ""
     duration = o.duration_minutes if o.duration_minutes is not None else ""
     stops = o.stops if o.stops is not None else ""
+    # Include fare family so Basic/Flex/Premium of same flight are not collapsed
+    family = (o.fare_family_code or o.fare_family or "").lower()
     # Include type so hotels never collide with flights
-    return f"{o.type.value}|{airline}|{flight_no}|{dep}|{duration}|{stops}|{o.title}".lower()
+    return f"{o.type.value}|{airline}|{flight_no}|{dep}|{duration}|{stops}|{family}|{o.title}".lower()
 
 
 def hotel_fingerprint(offer: NormalizedOffer) -> str:

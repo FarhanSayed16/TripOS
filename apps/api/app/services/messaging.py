@@ -53,9 +53,19 @@ async def generate_whatsapp_preview(quote_id: str, current_user: User, db: Async
     display = getattr(quote, "display_currency", None) or charge
     total_paise = sum(item.customer_total for item in quote.items)
     total_charge = total_paise / 100
-    valid_until = quote.valid_until.strftime("%B %d, %Y %I:%M %p")
 
     from app.services.fx import fx_quote_from_quote_row, paise_money_display
+    from app.services.i18n import resolve_locale
+    from app.services.message_templates import (
+        amount_line_for_locale,
+        whatsapp_quote_template,
+    )
+
+    locale = await resolve_locale(user=current_user, db=db)
+    if locale == "hi":
+        valid_until = quote.valid_until.strftime("%d/%m/%Y %I:%M %p")
+    else:
+        valid_until = quote.valid_until.strftime("%B %d, %Y %I:%M %p")
 
     fx = fx_quote_from_quote_row(quote)
     money = paise_money_display(
@@ -66,23 +76,24 @@ async def generate_whatsapp_preview(quote_id: str, current_user: User, db: Async
     )
     display_amt = money["display_amount"]
     display_cur = money["display_currency"]
+    fx_as_of_str = (
+        quote.fx_as_of.strftime("%Y-%m-%d %H:%M UTC") if quote.fx_as_of else None
+    )
 
-    if display_cur.upper() != charge.upper():
-        amount_line = (
-            f"Here is your travel quote for {display_cur} {display_amt:,.2f} "
-            f"(approx; payment in {charge} {total_charge:,.2f}).\n\n"
-            f"FX rate as of {quote.fx_as_of.strftime('%Y-%m-%d %H:%M UTC') if quote.fx_as_of else 'quote creation'}.\n\n"
-        )
-    else:
-        amount_line = f"Here is your travel quote for {charge} {total_charge:,.2f}.\n\n"
-
-    # Generate template text
-    message_template = (
-        f"Hi {customer.first_name},\n\n"
-        f"{amount_line}"
-        f"View your quote securely here: {public_url}\n\n"
-        f"Please note this quote is valid until {valid_until}. Let me know if you have any questions!\n\n"
-        f"Thanks."
+    amount_line = amount_line_for_locale(
+        locale=locale,
+        display_cur=display_cur,
+        display_amt=display_amt,
+        charge=charge,
+        total_charge=total_charge,
+        fx_as_of_str=fx_as_of_str,
+    )
+    message_template = whatsapp_quote_template(
+        locale=locale,
+        first_name=customer.first_name,
+        amount_line=amount_line,
+        public_url=public_url,
+        valid_until=valid_until,
     )
 
 
