@@ -14,6 +14,8 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
           </span>
         </Link>
         <nav className="flex items-center gap-2">
+          <Link href="#features" className="hidden md:inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium text-ink/70 hover:text-ink hover:bg-sand/60 transition-colors">Product</Link>
+          <Link href="#how-it-works" className="hidden md:inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium text-ink/70 hover:text-ink hover:bg-sand/60 transition-colors">How it Works</Link>
           <Link
             href="/login"
             className="inline-flex h-9 items-center rounded-lg px-4 text-sm font-medium text-ink hover:bg-sand/60 transition-colors"
@@ -42,8 +44,8 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
             © 2026 TripOS
           </div>
           <div className="flex items-center gap-6 text-xs text-muted-foreground">
-            <Link href="/login" className="hover:text-ink transition-colors">Features</Link>
-            <Link href="/login" className="hover:text-ink transition-colors">About</Link>
+            <Link href="#features" className="hover:text-ink transition-colors">Features</Link>
+            <Link href="#how-it-works" className="hover:text-ink transition-colors">How it Works</Link>
             <Link href="/login" className="hover:text-ink transition-colors">Privacy</Link>
             <Link href="/login" className="hover:text-ink transition-colors">Contact</Link>
           </div>

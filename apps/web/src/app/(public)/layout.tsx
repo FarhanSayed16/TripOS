@@ -7,10 +7,10 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         <Link href="/" className="font-display text-xl tracking-tight text-ink">
           TripOS
         </Link>
-        <span className="text-xs text-gray-500">Secure quote</span>
+        <span className="text-xs text-muted-foreground">Secure quote</span>
       </header>
       <main className="flex-1 flex flex-col">{children}</main>
-      <footer className="py-4 text-center text-xs text-gray-500 border-t border-line bg-paper">
+      <footer className="py-4 text-center text-xs text-muted-foreground border-t border-line bg-paper">
         Powered by TripOS · Contact your travel agent for changes
       </footer>
     </div>

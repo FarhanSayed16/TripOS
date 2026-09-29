@@ -93,10 +93,21 @@ export default function MarketingPage() {
         </div>
       </section>
 
+      {/* ── Full-bleed Hero Image (§12.2) ── */}
+      <section className="w-full relative h-[280px] sm:h-[360px] -mt-4 mb-8 overflow-hidden">
+        <img
+          src="/hero-india.jpg"
+          alt="India travel — from the Taj Mahal to tropical beaches"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-paper via-transparent to-paper" />
+        <div className="absolute inset-0 bg-gradient-to-r from-teal-dark/20 to-transparent" />
+      </section>
+
       {/* ── App Preview Mockup ── */}
       <section className="w-full max-w-5xl mx-auto px-6 pb-20 z-10">
         <div className="relative rounded-2xl border border-line/60 bg-paper/50 p-2 shadow-2xl backdrop-blur-sm -rotate-1 hover:rotate-0 transition-transform duration-500 ease-out">
-          <div className="rounded-xl overflow-hidden border border-line/80 bg-white shadow-inner relative flex flex-col">
+          <div className="rounded-xl overflow-hidden border border-line/80 bg-paper shadow-inner relative flex flex-col">
             {/* Mock Window Chrome */}
             <div className="h-10 bg-surface border-b border-line flex items-center px-4 gap-2">
               <div className="w-3 h-3 rounded-full bg-coral/80"></div>
@@ -148,7 +159,7 @@ export default function MarketingPage() {
       </section>
 
       {/* ── Workflow Steps / Features ── */}
-      <section className="w-full bg-white border-t border-line py-24">
+      <section className="w-full bg-paper border-t border-line py-24">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-ink">Everything you need to scale</h2>
