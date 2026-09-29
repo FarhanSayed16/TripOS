@@ -32,6 +32,7 @@ class QuoteItemCreate(BaseModel):
     search_request_id: str
     offer: NormalizedOffer
     agent_markup: int = 0  # in paise
+    extras: list = Field(default_factory=list)  # FC Phase 6 optional lines
 
 
 class QuoteItemResponse(BaseModel):
@@ -43,6 +44,9 @@ class QuoteItemResponse(BaseModel):
     platform_fee: int
     customer_total: int
     money: Optional[MoneyDisplay] = None
+    extras: list = Field(default_factory=list)
+    extras_total: int = 0
+    offer: Optional[dict] = None
 
 
 class PublicQuoteItemResponse(BaseModel):
@@ -108,6 +112,8 @@ class PublicQuoteResponse(BaseModel):
     fx_as_of: Optional[datetime] = None
     fx_source: Optional[str] = None
     charge_note: Optional[str] = None
+    # FC Phase 5
+    locale: str = "en"
 
 
 # --- Messaging ---

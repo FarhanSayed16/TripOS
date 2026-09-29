@@ -44,7 +44,9 @@ class UserResponse(BaseModel):
     org_status: str | None = None
     is_platform_admin: bool = False
     preferred_currency: str | None = None
+    locale: str | None = None
 
 
 class UserPreferencesUpdate(BaseModel):
     preferred_currency: str | None = Field(None, min_length=3, max_length=3)
+    locale: str | None = Field(None, min_length=2, max_length=8)

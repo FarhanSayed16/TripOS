@@ -15,6 +15,9 @@ class AdapterCapabilities(BaseModel):
     can_revalidate: bool
     can_book: bool
     can_cancel: bool
+    # FC Phase 6 — optional rich-offer capabilities (default off)
+    can_ancillaries: bool = False
+    can_seat_map: bool = False
 
 
 class PassengerQuery(BaseModel):
@@ -38,6 +41,30 @@ class SearchQuery(BaseModel):
     depart_time_from: Optional[str] = None  # HH:MM
     depart_time_to: Optional[str] = None
     dedupe: bool = True
+    # FC Phase 7 — promo / corp deal code (agent) + resolved org codes
+    deal_code: Optional[str] = None
+    deal_codes: Optional[List[str]] = None
+
+
+class BaggageInfo(BaseModel):
+    cabin_kg: Optional[float] = None
+    checked_kg: Optional[float] = None
+    pieces: Optional[int] = None
+    notes: Optional[str] = None
+
+
+class FlightSegment(BaseModel):
+    """FC Phase 7 — structured segment with marketing vs operating carrier."""
+
+    origin: str
+    destination: str
+    departure_at: Optional[str] = None  # ISO local or HH:MM
+    arrival_at: Optional[str] = None
+    marketing_carrier: Optional[str] = None
+    operating_carrier: Optional[str] = None
+    flight_number: Optional[str] = None
+    duration_minutes: Optional[int] = None
+    cabin: Optional[str] = None
 
 
 class NormalizedOffer(BaseModel):
@@ -45,7 +72,7 @@ class NormalizedOffer(BaseModel):
     supplier_code: str
     supplier_reference: str
     type: InventoryType
-    
+
     # Financials (supplier/charge — never mutated by FX)
     currency: str = "INR"
     total_amount: float
@@ -53,14 +80,14 @@ class NormalizedOffer(BaseModel):
     tax_amount: float
     # FC Phase 4 — display conversion envelope
     money: Optional[MoneyDisplay] = None
-    
+
     # Payload
     title: str
     description: Optional[str] = None
-    
+
     # Provider-specific raw data (for debugging or revalidation)
     raw_data: Optional[Dict[str, Any]] = Field(default_factory=dict)
-    
+
     # State flags
     is_revalidated: bool = False
     valid_until: Optional[datetime] = None
@@ -73,6 +100,17 @@ class NormalizedOffer(BaseModel):
     airline_code: Optional[str] = None
     airline_name: Optional[str] = None
     depart_time: Optional[str] = None  # HH:MM local
+    # FC Phase 6 — branded fares / cabin / baggage
+    fare_family: Optional[str] = None  # Basic | Flex | Premium
+    fare_family_code: Optional[str] = None
+    cabin: Optional[str] = None  # economy | premium_economy | business
+    baggage: Optional[BaggageInfo] = None
+    family_group_id: Optional[str] = None  # links fare variants of same flight
+    supports_ancillaries: Optional[bool] = None
+    supports_seat_map: Optional[bool] = None
+    # FC Phase 7 — structured segments + applied deal code
+    segments: Optional[List[FlightSegment]] = None
+    deal_code: Optional[str] = None
 
 
 class SearchResponse(BaseModel):
@@ -92,6 +130,9 @@ class SearchResponse(BaseModel):
     fx_rate: Optional[float] = None
     fx_as_of: Optional[str] = None
     fx_source: Optional[str] = None
+    # FC Phase 6
+    ancillaries_enabled: bool = False
+    seat_map_enabled: bool = False
 
 
 class RevalidateRequest(BaseModel):

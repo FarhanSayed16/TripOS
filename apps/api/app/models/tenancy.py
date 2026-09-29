@@ -1,6 +1,7 @@
 import uuid
 from typing import Optional, List
 from sqlalchemy import String, ForeignKey, Integer
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, TimestampMixin, SoftDeleteMixin
@@ -27,6 +28,12 @@ class Organization(Base, TimestampMixin, SoftDeleteMixin):
     status: Mapped[OrgStatus] = mapped_column(default=OrgStatus.pending_approval)
     # FC Phase 4 — display currency for browse/quote (charge currency stays settle/INR)
     preferred_currency: Mapped[str] = mapped_column(String(3), default="INR", server_default="INR")
+    # FC Phase 5 — default UI/API locale (en | hi)
+    default_locale: Mapped[str] = mapped_column(String(8), default="en", server_default="en")
+    # FC Phase 7 — promo / corporate / private fare codes for search
+    deal_codes: Mapped[list] = mapped_column(JSONB, default=list, server_default="[]", nullable=False)
+    # FC Phase 7 — optional AI preference memory (airlines, max_stops, etc.)
+    ai_preferences: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
 
     # Relationships
     domains: Mapped[List["OrganizationDomain"]] = relationship("OrganizationDomain", back_populates="organization", cascade="all, delete-orphan")
@@ -47,6 +54,8 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     # FC Phase 4 — optional override of org preferred_currency for display
     preferred_currency: Mapped[Optional[str]] = mapped_column(String(3), nullable=True)
+    # FC Phase 5 — optional override of org.default_locale
+    locale: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
 
     # Relationships
     memberships: Mapped[List["OrganizationMember"]] = relationship("OrganizationMember", back_populates="user")

@@ -17,6 +17,9 @@ class OrganizationBase(BaseModel):
     primary_color: Optional[str] = None
     status: OrgStatus
     preferred_currency: str = "INR"
+    default_locale: str = "en"
+    deal_codes: Optional[List[str]] = None
+    ai_preferences: Optional[dict] = None
 
 class OrganizationResponse(OrganizationBase):
     id: uuid.UUID
@@ -29,6 +32,9 @@ class OrganizationUpdate(BaseModel):
     logo_url: Optional[str] = None
     primary_color: Optional[str] = None
     preferred_currency: Optional[str] = Field(None, min_length=3, max_length=3)
+    default_locale: Optional[str] = Field(None, min_length=2, max_length=8)
+    deal_codes: Optional[List[str]] = None
+    ai_preferences: Optional[dict] = None
 
 class MemberResponse(BaseModel):
     role: UserRole
