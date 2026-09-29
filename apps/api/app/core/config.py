@@ -136,8 +136,8 @@ class Settings(BaseSettings):
     FC_AI_PREFERENCES_ENABLED: bool = True  # opt-in org.ai_preferences on AI search
     FC_SCHEDULE_CHANGE_WEBHOOK_SECRET: Optional[str] = None
 
-    # FC Phase 8 — partner / B2C-facing API
-    FC_PARTNER_API_ENABLED: bool = True
+    # FC Phase 8 — partner / B2C-facing API (opt-in; enable in sandbox .env)
+    FC_PARTNER_API_ENABLED: bool = False
     FC_PARTNER_DEFAULT_RATE_LIMIT: int = 60
     FC_PARTNER_WEBHOOK_TIMEOUT_SECONDS: float = 5.0
 

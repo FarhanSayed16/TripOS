@@ -19,7 +19,6 @@ from app.models.commercial import Quote, QuoteItem, QuotePassenger, Message, Boo
 from app.services.quotes import create_quote, update_quote_passengers, mark_quote_ready
 from app.services.messaging import generate_whatsapp_preview, send_quote_message
 from app.services.payments import create_payment_for_quote
-from app.services.inventory import cancel_booking
 from app.core.config import settings
 
 router = APIRouter(prefix="/quotes", tags=["quotes"])
@@ -184,13 +183,14 @@ async def api_cancel_quote(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Cancels the quote. If booked, attempts to cancel via supplier adapter.
+    Cancels the quote. If booked, attempts supplier cancel (soft-fail:
+    TripOS still marks cancelled and may open a refund for ops).
     FIX-P21-02: org-scoped — never cancel another agency's quote.
     """
     from sqlalchemy.orm import selectinload
-    from app.models.enums import QuoteStatus, BookingStatus
-    from app.services.audit import write_audit
-    from app.services.inventory import cancel_booking
+    from app.services.booking_cancel import cancel_quote_with_soft_supplier
+    from app.services.fx import enrich_quote_items_money
+    from app.services.partner_webhooks import dispatch_partner_event
 
     stmt = (
         select(Quote)
@@ -198,6 +198,7 @@ async def api_cancel_quote(
             selectinload(Quote.booking),
             selectinload(Quote.payment),
             selectinload(Quote.items).selectinload(QuoteItem.offer_snapshot),
+            selectinload(Quote.passengers),
         )
         .where(
             Quote.id == quote_id,
@@ -209,42 +210,36 @@ async def api_cancel_quote(
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
 
-    if quote.status == QuoteStatus.cancelled:
-        return quote
-        
-    if quote.booking and quote.booking.status == BookingStatus.confirmed:
-        if quote.items and quote.items[0].offer_snapshot:
-            raw_data = quote.items[0].offer_snapshot.offer_data or {}
-            supplier_code = raw_data.get("supplier_code", "mock_supplier")
-            
-            success = await cancel_booking(supplier_code, quote.booking.supplier_pnr)
-            if not success:
-                raise HTTPException(status_code=500, detail="Failed to cancel supplier booking")
-                
-        quote.booking.status = BookingStatus.cancelled
-
-    quote.status = QuoteStatus.cancelled
-
-    await write_audit(
+    result = await cancel_quote_with_soft_supplier(
         db,
-        organization_id=quote.organization_id,
+        quote,
         actor_user_id=current_user.id,
-        action="cancel.requested",
-        entity_type="quote",
-        entity_id=str(quote.id),
-        metadata={},
+        metadata={"source": "agent_api"},
     )
+    if not result.get("already_cancelled"):
+        await db.commit()
+        await db.refresh(quote, ["items", "passengers", "booking"])
+        try:
+            await dispatch_partner_event(
+                db,
+                quote.organization_id,
+                "booking.cancelled",
+                {
+                    "quote_id": str(quote.id),
+                    "booking_id": str(quote.booking.id) if quote.booking else None,
+                    "status": "cancelled",
+                    "supplier_cancel_ok": result.get("supplier_cancel_ok"),
+                },
+            )
+        except Exception:
+            pass
 
-    # FC Phase 2 — if payment was captured, open refund request for ops
-    from app.services.refunds import maybe_request_refund_on_cancel
-
-    refund = await maybe_request_refund_on_cancel(
-        db, quote, requested_by_user_id=current_user.id
-    )
-
-    await db.commit()
-    await db.refresh(quote)
-    return quote
+    data = QuoteResponse.model_validate(quote)
+    try:
+        data.items = enrich_quote_items_money(quote)
+    except Exception:
+        pass
+    return data
 
 
 @router.get("/{quote_id}/fare-rules")

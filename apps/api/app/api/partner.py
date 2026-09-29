@@ -62,9 +62,11 @@ async def get_partner_app(
             status_code=401,
             error_code="PARTNER_UNAUTHORIZED",
         )
-    client_ip = request.client.host if request.client else None
+    from app.core.rate_limit import client_ip_from_request
+
+    client_ip = client_ip_from_request(request)
     app = await authenticate_api_key(raw, db, client_ip=client_ip)
-    partner_rate_limiter.check(app.id, app.rate_limit_per_minute)
+    await partner_rate_limiter.check(app.id, app.rate_limit_per_minute)
     return app
 
 
@@ -265,12 +267,13 @@ async def partner_pay_link(
     if quote and quote.public_token:
         base = settings.FRONTEND_URL.rstrip("/")
         public_url = f"{base}/q/{quote.public_token}"
+    charge = (quote.charge_currency if quote else None) or settings.CHARGE_CURRENCY or "INR"
     return PartnerPayLinkResponse(
         quote_id=quote_id,
         payment_id=payment.id,
         status=payment.status.value if hasattr(payment.status, "value") else str(payment.status),
         amount_paise=payment.amount,
-        currency="INR",
+        currency=charge,
         payment_link_url=payment.payment_link_url,
         public_quote_url=public_url,
     )
@@ -323,10 +326,7 @@ async def partner_cancel_quote(
     db: AsyncSession = Depends(get_db),
 ):
     require_scope(app, "booking")
-    from app.models.enums import QuoteStatus, BookingStatus
-    from app.services.audit import write_audit
-    from app.services.inventory import cancel_booking
-    from app.services.refunds import maybe_request_refund_on_cancel
+    from app.services.booking_cancel import cancel_quote_with_soft_supplier
     from app.services.fx import enrich_quote_items_money
     from app.services.partner_webhooks import dispatch_partner_event
 
@@ -348,29 +348,13 @@ async def partner_cancel_quote(
     if not quote:
         raise AppError("Quote not found", status_code=404)
 
-    if quote.status != QuoteStatus.cancelled:
-        if quote.booking and quote.booking.status == BookingStatus.confirmed:
-            if quote.items and quote.items[0].offer_snapshot:
-                raw_data = quote.items[0].offer_snapshot.offer_data or {}
-                supplier_code = raw_data.get("supplier_code", "mock_supplier")
-                success = await cancel_booking(supplier_code, quote.booking.supplier_pnr)
-                if not success:
-                    raise AppError("Failed to cancel supplier booking", status_code=500)
-            quote.booking.status = BookingStatus.cancelled
-
-        quote.status = QuoteStatus.cancelled
-        await write_audit(
-            db,
-            organization_id=quote.organization_id,
-            actor_user_id=user.id,
-            action="cancel.requested",
-            entity_type="quote",
-            entity_id=str(quote.id),
-            metadata={"source": "partner_api", "partner_app_id": str(app.id)},
-        )
-        await maybe_request_refund_on_cancel(
-            db, quote, requested_by_user_id=user.id
-        )
+    result = await cancel_quote_with_soft_supplier(
+        db,
+        quote,
+        actor_user_id=user.id,
+        metadata={"source": "partner_api", "partner_app_id": str(app.id)},
+    )
+    if not result.get("already_cancelled"):
         await db.commit()
         await db.refresh(quote, ["items", "passengers", "booking"])
         await dispatch_partner_event(
@@ -381,6 +365,10 @@ async def partner_cancel_quote(
                 "quote_id": str(quote.id),
                 "booking_id": str(quote.booking.id) if quote.booking else None,
                 "status": "cancelled",
+                "supplier_cancel_ok": result.get("supplier_cancel_ok"),
+                "needs_manual_supplier_cancel": bool(
+                    result.get("supplier_cancel_ok") is False
+                ),
             },
         )
 

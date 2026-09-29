@@ -18,9 +18,73 @@ from app.schemas.inventory import (
     InventoryType,
     NormalizedOffer,
     SearchQuery,
+    FlightSegment,
 )
 
 logger = structlog.get_logger()
+
+
+def _airport_code(node: Any) -> Optional[str]:
+    if not isinstance(node, dict):
+        return None
+    return node.get("AirportCode") or node.get("CityCode")
+
+
+def _map_tbo_segments(segments_raw: Any) -> List[FlightSegment]:
+    """
+    TBO Results[].Segments is typically List[List[segment]] (legs → segments).
+    Flatten into TripOS FlightSegment with marketing vs operating carrier.
+    """
+    out: List[FlightSegment] = []
+    if not segments_raw:
+        return out
+    legs = segments_raw
+    # Normalize to list of legs
+    if isinstance(legs, dict):
+        legs = [legs]
+    if not isinstance(legs, list):
+        return out
+    # If flat list of segment dicts (not nested), wrap
+    if legs and isinstance(legs[0], dict) and "Origin" in legs[0]:
+        legs = [legs]
+
+    for leg in legs:
+        if not isinstance(leg, list):
+            continue
+        for seg in leg:
+            if not isinstance(seg, dict):
+                continue
+            airline = seg.get("Airline") or {}
+            op = seg.get("OperatingCarrier") or seg.get("OperatingAirline") or {}
+            if isinstance(op, str):
+                op_code = op
+            else:
+                op_code = (op or {}).get("AirlineCode") or (op or {}).get("Code")
+            mkt_code = airline.get("AirlineCode") if isinstance(airline, dict) else None
+            flight_no = seg.get("FlightNumber") or airline.get("FlightNumber")
+            if mkt_code and flight_no and not str(flight_no).upper().startswith(str(mkt_code).upper()):
+                flight_display = f"{mkt_code}{flight_no}"
+            else:
+                flight_display = str(flight_no) if flight_no else None
+            duration = seg.get("Duration")
+            try:
+                duration_i = int(duration) if duration is not None else None
+            except (TypeError, ValueError):
+                duration_i = None
+            out.append(
+                FlightSegment(
+                    origin=_airport_code(seg.get("Origin") or {}) or "",
+                    destination=_airport_code(seg.get("Destination") or {}) or "",
+                    departure_at=seg.get("DepTime") or seg.get("DepartureTime"),
+                    arrival_at=seg.get("ArrTime") or seg.get("ArrivalTime"),
+                    marketing_carrier=mkt_code,
+                    operating_carrier=op_code or mkt_code,
+                    flight_number=flight_display,
+                    duration_minutes=duration_i,
+                    cabin=(seg.get("CabinClass") or seg.get("Cabin") or None),
+                )
+            )
+    return [s for s in out if s.origin or s.destination]
 
 
 def tbo_live_mode_active() -> bool:
@@ -125,8 +189,12 @@ class TboAdapter(BaseAdapter):
                 airline_code = (first_segment.get("Airline") or {}).get("AirlineCode")
                 flight_no = first_segment.get("FlightNumber", "")
                 duration = first_segment.get("Duration")
+                mapped_segments = _map_tbo_segments(segments)
                 try:
-                    stops = max(0, len(segments) - 1) if segments else 0
+                    if mapped_segments:
+                        stops = max(0, len(mapped_segments) - 1)
+                    else:
+                        stops = max(0, len(segments) - 1) if segments else 0
                 except TypeError:
                     stops = 0
 
@@ -140,6 +208,12 @@ class TboAdapter(BaseAdapter):
                 ]
                 if mode != "live":
                     desc_bits.append("— not a live TBO offer")
+
+                dep_time = None
+                if first_segment.get("DepTime"):
+                    # Often ISO; show HH:MM when possible
+                    raw_dep = str(first_segment.get("DepTime"))
+                    dep_time = raw_dep[11:16] if "T" in raw_dep and len(raw_dep) >= 16 else raw_dep
 
                 offer = NormalizedOffer(
                     id=str(uuid.uuid4()),
@@ -166,6 +240,8 @@ class TboAdapter(BaseAdapter):
                     stops=stops,
                     airline_code=airline_code,
                     airline_name=airline,
+                    depart_time=dep_time,
+                    segments=mapped_segments or None,
                     valid_until=datetime.now(timezone.utc) + timedelta(minutes=15),
                 )
                 offers.append(offer)
