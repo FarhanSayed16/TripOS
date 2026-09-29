@@ -77,7 +77,7 @@ export default function ForgotPasswordPage() {
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "Sending link..." : "Send Reset Link"}
           </Button>
-          <div className="text-center text-sm text-gray-500">
+          <div className="text-center text-sm text-muted-foreground">
             Remember your password? <Link href="/login" className="text-focus hover:underline">Sign in</Link>
           </div>
         </CardFooter>

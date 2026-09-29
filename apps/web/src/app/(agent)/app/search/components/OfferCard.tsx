@@ -62,15 +62,15 @@ export function OfferCard({
                     ? "bg-emerald-50 text-emerald-800 border-emerald-200"
                     : isIndicativeSim
                       ? "bg-amber-50 text-amber-800 border-amber-200"
-                      : "bg-gray-50 text-gray-600 border-gray-200"
+                      : "bg-surface text-muted-foreground border-line"
                 }`}
               >
                 {sourceLabel(offer)}
               </span>
             </div>
-            <p className="text-sm text-gray-500 mt-1">{offer.description}</p>
+            <p className="text-sm text-muted-foreground mt-1">{offer.description}</p>
             {offer.baggage && (
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Baggage
                 {offer.baggage.cabin_kg != null ? ` · cabin ${offer.baggage.cabin_kg}kg` : ""}
                 {offer.baggage.checked_kg != null
@@ -79,7 +79,7 @@ export function OfferCard({
               </p>
             )}
             {(offer.duration_minutes != null || offer.stops != null) && (
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {offer.stops != null
                   ? offer.stops === 0
                     ? "Non-stop"
@@ -93,7 +93,7 @@ export function OfferCard({
               </p>
             )}
             {offer.segments && offer.segments.length > 0 && (
-              <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+              <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
                 {offer.segments.map((seg, i) => {
                   const mkt = seg.marketing_carrier || "?";
                   const op = seg.operating_carrier || mkt;
@@ -114,7 +114,7 @@ export function OfferCard({
                 Deal: {offer.deal_code}
               </span>
             )}
-            <p className="text-xs text-gray-400 mt-2 font-mono">Ref: {offer.supplier_reference}</p>
+            <p className="text-xs text-muted-foreground/60 mt-2 font-mono">Ref: {offer.supplier_reference}</p>
           </div>
         </div>
 

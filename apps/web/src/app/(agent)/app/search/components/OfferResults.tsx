@@ -146,13 +146,13 @@ export function OfferResults({
             </span>
           )}
           {aggregation?.deduped_away ? (
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-muted-foreground">
               Deduped {aggregation.deduped_away} duplicate
               {aggregation.deduped_away === 1 ? "" : "s"}
             </span>
           ) : null}
         </div>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-muted-foreground">
           Showing {visibleOffers.length} of {filteredSorted.length}
           {filteredSorted.length !== offers.length
             ? ` (filtered from ${offers.length})`
@@ -161,7 +161,7 @@ export function OfferResults({
       </div>
 
       {fxNote && (
-        <p className="text-xs text-gray-500 border border-line rounded-md bg-white px-3 py-2">
+        <p className="text-xs text-muted-foreground border border-line rounded-md bg-paper px-3 py-2">
           {fxNote}
         </p>
       )}
@@ -171,7 +171,7 @@ export function OfferResults({
           {Object.entries(supplierCounts).map(([code, count]) => (
             <span
               key={code}
-              className="px-2 py-1 rounded border border-line bg-white text-gray-600 font-mono"
+              className="px-2 py-1 rounded border border-line bg-paper text-muted-foreground font-mono"
             >
               {code}: {count}
             </span>
@@ -181,10 +181,10 @@ export function OfferResults({
 
       {/* Client-side sort/filter — no re-search */}
       <div className="flex flex-wrap gap-3 items-end p-3 rounded-lg border border-line bg-sand/20">
-        <label className="text-xs text-gray-600 flex flex-col gap-1">
+        <label className="text-xs text-muted-foreground flex flex-col gap-1">
           Sort
           <select
-            className="border border-line rounded-md px-2 py-1.5 text-sm bg-white"
+            className="border border-line rounded-md px-2 py-1.5 text-sm bg-paper"
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
           >
@@ -194,10 +194,10 @@ export function OfferResults({
             <option value="stops">Stops</option>
           </select>
         </label>
-        <label className="text-xs text-gray-600 flex flex-col gap-1">
+        <label className="text-xs text-muted-foreground flex flex-col gap-1">
           Stops
           <select
-            className="border border-line rounded-md px-2 py-1.5 text-sm bg-white"
+            className="border border-line rounded-md px-2 py-1.5 text-sm bg-paper"
             value={maxStops}
             onChange={(e) => setMaxStops(e.target.value)}
           >
@@ -207,10 +207,10 @@ export function OfferResults({
             <option value="2">≤ 2 stops</option>
           </select>
         </label>
-        <label className="text-xs text-gray-600 flex flex-col gap-1">
+        <label className="text-xs text-muted-foreground flex flex-col gap-1">
           Airline
           <select
-            className="border border-line rounded-md px-2 py-1.5 text-sm bg-white min-w-[120px]"
+            className="border border-line rounded-md px-2 py-1.5 text-sm bg-paper min-w-[120px]"
             value={airline}
             onChange={(e) => setAirline(e.target.value)}
           >
@@ -222,12 +222,12 @@ export function OfferResults({
             ))}
           </select>
         </label>
-        <label className="text-xs text-gray-600 flex flex-col gap-1">
+        <label className="text-xs text-muted-foreground flex flex-col gap-1">
           Max price
           <input
             type="number"
             placeholder="e.g. 8000"
-            className="border border-line rounded-md px-2 py-1.5 text-sm bg-white w-28"
+            className="border border-line rounded-md px-2 py-1.5 text-sm bg-paper w-28"
             value={maxPrice}
             onChange={(e) => setMaxPrice(e.target.value)}
           />
@@ -262,14 +262,14 @@ export function OfferResults({
               visibleOffers.filter((o) => o.family_group_id === offer.family_group_id)
                 .length > 1 && (
                 <div className="flex flex-wrap gap-2 text-xs px-1">
-                  <span className="text-gray-500 self-center">Compare fares:</span>
+                  <span className="text-muted-foreground self-center">Compare fares:</span>
                   {visibleOffers
                     .filter((o) => o.family_group_id === offer.family_group_id)
                     .sort((a, b) => a.total_amount - b.total_amount)
                     .map((o) => (
                       <span
                         key={o.id}
-                        className="px-2 py-1 rounded border border-line bg-white font-medium"
+                        className="px-2 py-1 rounded border border-line bg-paper font-medium"
                       >
                         {o.fare_family} · {o.currency}{" "}
                         {o.total_amount.toLocaleString()}
@@ -281,7 +281,7 @@ export function OfferResults({
           </div>
         ))}
         {visibleOffers.length === 0 && (
-          <p className="text-sm text-gray-500 py-6 text-center">
+          <p className="text-sm text-muted-foreground py-6 text-center">
             No offers match these filters. Reset filters to see all results.
           </p>
         )}

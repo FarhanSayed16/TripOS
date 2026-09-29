@@ -48,7 +48,7 @@ function ResetPasswordContent() {
     return (
       <Card className="w-full max-w-md shadow-lg border-line p-6 text-center">
         <h2 className="text-lg font-bold text-coral mb-2">Invalid Link</h2>
-        <p className="text-sm text-gray-500 mb-4">This password reset link is missing or malformed.</p>
+        <p className="text-sm text-muted-foreground mb-4">This password reset link is missing or malformed.</p>
         <Link href="/forgot-password" className="text-sm font-medium text-focus hover:underline">Request a new link</Link>
       </Card>
     );

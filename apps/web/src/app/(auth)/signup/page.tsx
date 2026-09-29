@@ -88,7 +88,7 @@ export default function SignupPage() {
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "Creating account..." : "Sign Up"}
           </Button>
-          <div className="text-center text-sm text-gray-500">
+          <div className="text-center text-sm text-muted-foreground">
             Already have an account? <Link href="/login" className="text-focus hover:underline">Sign in</Link>
           </div>
         </CardFooter>
