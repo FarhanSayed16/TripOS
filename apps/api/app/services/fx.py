@@ -248,7 +248,7 @@ async def resolve_display_currency(
     organization_id=None,
 ) -> str:
     """User override → org preferred → charge currency."""
-    from app.models.tenancy import Organization, User as UserModel
+    from app.models.tenancy import Organization
 
     if user is not None:
         pref = getattr(user, "preferred_currency", None)
@@ -334,6 +334,9 @@ def enrich_quote_items_money(quote) -> list:
     display = getattr(quote, "display_currency", None) or charge
     out = []
     for item in quote.items or []:
+        offer_data = None
+        if getattr(item, "offer_snapshot", None) and item.offer_snapshot.offer_data:
+            offer_data = item.offer_snapshot.offer_data
         out.append(
             {
                 "id": item.id,
@@ -342,6 +345,9 @@ def enrich_quote_items_money(quote) -> list:
                 "agent_markup": item.agent_markup,
                 "platform_fee": item.platform_fee,
                 "customer_total": item.customer_total,
+                "extras": list(getattr(item, "extras", None) or []),
+                "extras_total": int(getattr(item, "extras_total", 0) or 0),
+                "offer": offer_data,
                 "money": paise_money_display(
                     item.customer_total,
                     charge_currency=charge,

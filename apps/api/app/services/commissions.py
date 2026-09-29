@@ -1,4 +1,5 @@
 import uuid
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -174,3 +175,61 @@ async def get_wallet_summary(org_id: uuid.UUID, db: AsyncSession) -> dict:
             summary["total_settled_paise"] -= entry.amount_paise
 
     return summary
+
+
+async def export_commission_statement_csv(
+    db: AsyncSession,
+    *,
+    org_id: Optional[uuid.UUID] = None,
+    from_dt=None,
+    to_dt=None,
+) -> str:
+    """FC Phase 7 — CSV settle statement for one org or all orgs."""
+    import csv
+    import io
+    from datetime import datetime, timezone
+
+    stmt = select(WalletLedgerEntry).order_by(WalletLedgerEntry.created_at.asc())
+    if org_id:
+        stmt = stmt.where(WalletLedgerEntry.organization_id == org_id)
+    if from_dt:
+        stmt = stmt.where(WalletLedgerEntry.created_at >= from_dt)
+    if to_dt:
+        stmt = stmt.where(WalletLedgerEntry.created_at <= to_dt)
+
+    entries = (await db.execute(stmt)).scalars().all()
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(
+        [
+            "entry_id",
+            "organization_id",
+            "booking_id",
+            "type",
+            "status",
+            "amount_paise",
+            "amount_inr",
+            "description",
+            "created_at",
+            "settled_at",
+            "exported_at",
+        ]
+    )
+    exported_at = datetime.now(timezone.utc).isoformat()
+    for e in entries:
+        writer.writerow(
+            [
+                str(e.id),
+                str(e.organization_id),
+                str(e.booking_id) if e.booking_id else "",
+                e.type,
+                e.status,
+                e.amount_paise,
+                f"{e.amount_paise / 100:.2f}",
+                (e.description or "").replace("\n", " "),
+                e.created_at.isoformat() if e.created_at else "",
+                e.settled_at.isoformat() if getattr(e, "settled_at", None) else "",
+                exported_at,
+            ]
+        )
+    return buf.getvalue()
