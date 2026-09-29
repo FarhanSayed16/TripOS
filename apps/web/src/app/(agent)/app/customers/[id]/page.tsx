@@ -87,7 +87,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
               </div>
 
               <div className="flex items-center gap-4 text-sm group">
-                <div className="w-10 h-10 rounded-full bg-sand flex items-center justify-center flex-shrink-0 text-muted-foreground group-hover:bg-gray-200 transition-colors">
+                <div className="w-10 h-10 rounded-full bg-sand flex items-center justify-center flex-shrink-0 text-muted-foreground group-hover:bg-line transition-colors">
                   <Calendar className="w-4 h-4" />
                 </div>
                 <div>

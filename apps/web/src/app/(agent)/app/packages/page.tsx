@@ -67,7 +67,7 @@ export default function PackagesPage() {
           {packages.map((pkg) => (
             <Card key={pkg.id} className="overflow-hidden flex flex-col bg-paper border-line shadow-sm hover:shadow-md transition-shadow">
               {pkg.cover_image_url ? (
-                <div className="h-48 relative w-full bg-gray-100 border-b border-line">
+                <div className="h-48 relative w-full bg-surface border-b border-line">
                   <img
                     src={pkg.cover_image_url}
                     alt={pkg.title}
@@ -75,7 +75,7 @@ export default function PackagesPage() {
                   />
                 </div>
               ) : (
-                <div className="h-48 bg-surface border-b border-line flex items-center justify-center text-gray-400">
+                <div className="h-48 bg-surface border-b border-line flex items-center justify-center text-muted-foreground/60">
                   <MapPin className="w-10 h-10 opacity-20" />
                 </div>
               )}

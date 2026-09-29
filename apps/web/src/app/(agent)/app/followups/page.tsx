@@ -84,7 +84,7 @@ export default function FollowUpsPage() {
                     {f.hours_overdue}h Overdue
                   </Badge>
                 </div>
-                <div className="flex items-center gap-4 text-sm text-gray-500">
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <span>{formatCurrency(f.amount_paise || 0)}</span>
                   <Link href={`/app/quotes/${f.quote_id}`} className="text-brand_primary hover:underline">
                     View Quote
@@ -110,7 +110,7 @@ export default function FollowUpsPage() {
                 </button>
                 <button
                   onClick={() => handleDismiss(f.id)}
-                  className="p-2 text-gray-400 hover:text-red-500 rounded-md hover:bg-red-50 transition-colors"
+                  className="p-2 text-muted-foreground/60 hover:text-red-500 rounded-md hover:bg-red-50 transition-colors"
                   title="Dismiss"
                 >
                   <X className="w-5 h-5" />

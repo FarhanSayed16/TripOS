@@ -17,7 +17,7 @@ export default function MorePage() {
     <div className="space-y-6 max-w-lg mx-auto">
       <div>
         <h1 className="font-display text-3xl tracking-tight text-ink">More</h1>
-        <p className="text-gray-500 text-sm mt-1">Agency tools and account.</p>
+        <p className="text-muted-foreground text-sm mt-1">Agency tools and account.</p>
       </div>
       <ul className="bg-paper border border-line rounded-lg overflow-hidden divide-y divide-line">
         {links.map((link) => {
@@ -30,7 +30,7 @@ export default function MorePage() {
               >
                 <Icon className="h-5 w-5 text-teal" />
                 <span className="flex-1 font-medium text-ink">{link.name}</span>
-                <ChevronRight className="h-4 w-4 text-gray-400" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
               </Link>
             </li>
           );
