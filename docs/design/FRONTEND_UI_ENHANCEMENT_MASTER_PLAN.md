@@ -531,21 +531,21 @@ Only after 1–14:
 
 | Phase | Name | Owner | Status |
 |---|---|---|---|
-| 1 | Design system | | ☐ |
-| 2 | App shell | | ☐ |
-| 3 | Home | | ☐ |
-| 4 | Search | | ☐ |
-| 5 | Quotes list | | ☐ |
-| 6 | Quote detail | | ☐ |
-| 7 | Public quote | | ☐ |
-| 8 | Bookings + Change | | ☐ |
-| 9 | Settings | | ☐ |
-| 10 | Money/CRM/Packages/AI | | ☐ |
-| 11 | Admin | | ☐ |
-| 12 | Marketing | | ☐ |
-| 13 | Mobile | | ☐ |
-| 14 | Polish / i18n / a11y | | ☐ |
-| 15 | Stretch | | ☐ |
+| 1 | Design system | Antigravity | ☑ |
+| 2 | App shell | Antigravity | ☑ |
+| 3 | Home | Antigravity | ☑ |
+| 4 | Search | Antigravity | ☑ |
+| 5 | Quotes list | Antigravity | ☑ |
+| 6 | Quote detail | Antigravity | ☑ |
+| 7 | Public quote | Antigravity | ☑ |
+| 8 | Bookings + Change | Antigravity | ☑ |
+| 9 | Settings | Antigravity | ☑ |
+| 10 | Money/CRM/Packages/AI | Antigravity | ☑ |
+| 11 | Admin | Antigravity | ☑ |
+| 12 | Marketing | Antigravity | ☑ |
+| 13 | Mobile | Antigravity | ☑ |
+| 14 | Polish / i18n / a11y | Antigravity | ☑ |
+| 15 | Stretch | Antigravity | ☑ (core analytics) |
 
 ---
 
