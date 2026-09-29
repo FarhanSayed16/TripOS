@@ -32,11 +32,11 @@ export default function AdminLayout({
   }, [isAuthenticated, isLoading, router, user?.is_platform_admin]);
 
   if (isLoading || !isAuthenticated) {
-    return <div className="flex min-h-screen items-center justify-center bg-gray-50">Loading...</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-surface">Loading...</div>;
   }
 
   if (!user?.is_platform_admin) {
-    return <div className="flex min-h-screen items-center justify-center bg-gray-50">Redirecting...</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-surface">Redirecting...</div>;
   }
 
   const survivalActive = Boolean(survival?.enabled && survival?.active);
@@ -57,10 +57,10 @@ export default function AdminLayout({
   ];
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-surface">
       {/* Desktop Sidebar (Distinct Admin Theme) */}
       <aside className="w-64 bg-ink text-paper hidden md:flex flex-col">
-        <div className="h-16 flex items-center px-6 border-b border-gray-800">
+        <div className="h-16 flex items-center px-6 border-b border-white/10">
           <span className="text-xl font-bold text-paper">TripOS Admin</span>
         </div>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -73,18 +73,18 @@ export default function AdminLayout({
                 href={link.href} 
                 className={`flex items-center gap-3 px-3 py-2 rounded-md font-medium transition-colors ${
                   isActive 
-                    ? 'text-paper bg-gray-800' 
-                    : 'text-gray-400 hover:bg-gray-800 hover:text-paper'
+                    ? 'text-paper bg-white/10' 
+                    : 'text-white/50 hover:bg-white/10 hover:text-paper'
                 }`}
               >
-                <Icon className={`h-5 w-5 ${isActive ? 'text-focus' : 'text-gray-500'}`} />
+                <Icon className={`h-5 w-5 ${isActive ? 'text-focus' : 'text-white/40'}`} />
                 {link.name}
               </Link>
             )
           })}
         </nav>
-        <div className="p-4 border-t border-gray-800 space-y-1">
-          <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2 text-gray-400 hover:bg-gray-800 rounded-md font-medium text-left transition-colors">
+        <div className="p-4 border-t border-white/10 space-y-1">
+          <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2 text-white/50 hover:bg-white/10 rounded-md font-medium text-left transition-colors">
             <LogOut className="h-5 w-5" />
             Sign Out
           </button>
@@ -140,7 +140,7 @@ export default function AdminLayout({
             <div className="flex items-center gap-4">
               <div className="flex flex-col text-right hidden sm:flex">
                 <span className="text-sm font-medium text-ink">{user?.email}</span>
-                <span className="text-xs text-gray-500">Administrator</span>
+                <span className="text-xs text-muted-foreground">Administrator</span>
               </div>
               <div className="h-8 w-8 rounded-full bg-coral/10 flex items-center justify-center text-coral font-semibold uppercase">
                 {user?.email?.charAt(0) || 'A'}

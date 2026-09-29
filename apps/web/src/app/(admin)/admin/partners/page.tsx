@@ -130,12 +130,12 @@ export default function AdminPartnersPage() {
                   <div className="space-y-2">
                     <div>
                       <span className="text-[10px] uppercase font-bold text-amber-700/70">API Key</span>
-                      <p className="font-mono text-xs bg-white border border-amber-200 p-2 rounded break-all select-all text-amber-900">{createdKey}</p>
+                      <p className="font-mono text-xs bg-paper border border-amber-200 p-2 rounded break-all select-all text-amber-900">{createdKey}</p>
                     </div>
                     {createdSecret && (
                       <div>
                         <span className="text-[10px] uppercase font-bold text-amber-700/70">Webhook Secret</span>
-                        <p className="font-mono text-xs bg-white border border-amber-200 p-2 rounded break-all select-all text-amber-900">{createdSecret}</p>
+                        <p className="font-mono text-xs bg-paper border border-amber-200 p-2 rounded break-all select-all text-amber-900">{createdSecret}</p>
                       </div>
                     )}
                   </div>

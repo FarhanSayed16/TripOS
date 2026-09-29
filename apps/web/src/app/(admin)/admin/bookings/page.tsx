@@ -137,7 +137,7 @@ export default function AdminBookingsPage() {
                       </div>
                     )}
                     {booking.status === "cancelled" && (
-                      <Badge className="bg-gray-100 text-gray-700 border-gray-200 gap-1.5 pr-2">
+                      <Badge className="bg-surface text-ink/80 border-line gap-1.5 pr-2">
                         <XCircle className="w-3 h-3" /> Cancelled
                       </Badge>
                     )}

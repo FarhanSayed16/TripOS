@@ -11,7 +11,7 @@ export default function AdminPackagesPage() {
   const [deletePackage] = useDeletePackageMutation();
 
   if (isLoading) {
-    return <div className="p-8 text-gray-500">Loading packages...</div>;
+    return <div className="p-8 text-muted-foreground">Loading packages...</div>;
   }
 
   const packages = data?.items || [];
@@ -35,7 +35,7 @@ export default function AdminPackagesPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-ink">Curated Packages</h1>
-          <p className="text-gray-500">Manage standard travel packages for agents.</p>
+          <p className="text-muted-foreground">Manage standard travel packages for agents.</p>
         </div>
         <Link 
           href="/admin/packages/new"
@@ -50,7 +50,7 @@ export default function AdminPackagesPage() {
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-gray-500 uppercase bg-surface">
+              <thead className="text-xs text-muted-foreground uppercase bg-surface">
                 <tr>
                   <th className="px-4 py-3">Title & Destination</th>
                   <th className="px-4 py-3">Duration</th>
@@ -61,10 +61,10 @@ export default function AdminPackagesPage() {
               </thead>
               <tbody>
                 {packages.map((pkg) => (
-                  <tr key={pkg.id} className="border-b border-line last:border-0 hover:bg-gray-50/50">
+                  <tr key={pkg.id} className="border-b border-line last:border-0 hover:bg-surface/50">
                     <td className="px-4 py-3">
                       <div className="font-medium text-ink">{pkg.title}</div>
-                      <div className="text-xs text-gray-500">{pkg.destination}</div>
+                      <div className="text-xs text-muted-foreground">{pkg.destination}</div>
                     </td>
                     <td className="px-4 py-3">{pkg.duration_days} Days</td>
                     <td className="px-4 py-3 font-medium">
@@ -97,7 +97,7 @@ export default function AdminPackagesPage() {
                 ))}
                 {packages.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                       No packages found. Click "Create Package" to get started.
                     </td>
                   </tr>

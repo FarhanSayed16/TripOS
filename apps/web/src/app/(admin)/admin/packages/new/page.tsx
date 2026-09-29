@@ -38,12 +38,12 @@ export default function NewPackagePage() {
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
       <div className="flex items-center gap-4">
-        <Link href="/admin/packages" className="text-gray-500 hover:text-ink">
+        <Link href="/admin/packages" className="text-muted-foreground hover:text-ink">
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
           <h1 className="text-2xl font-bold text-ink">Create Package</h1>
-          <p className="text-gray-500">Define the basic details of the new package.</p>
+          <p className="text-muted-foreground">Define the basic details of the new package.</p>
         </div>
       </div>
 

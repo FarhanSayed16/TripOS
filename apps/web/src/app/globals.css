@@ -76,8 +76,8 @@
 
 :root {
   /* ── Core palette ── */
-  --ink: 220 20% 14%;
-  --paper: 0 0% 100%;
+  --ink: 160 29% 8%;
+  --paper: 40 20% 97%;
   --surface: 210 20% 98%;
   --teal: 173 58% 39%;
   --teal-dark: 190 60% 32%;
@@ -406,5 +406,55 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────
+   MOBILE CARD STACK (§13.3)
+   Apply .table-card-mobile to a table wrapper to convert
+   rows into stacked cards on screens < 640px.
+   ──────────────────────────────────────────────────────────── */
+@media (max-width: 639px) {
+  .table-card-mobile table,
+  .table-card-mobile thead,
+  .table-card-mobile tbody,
+  .table-card-mobile th,
+  .table-card-mobile td,
+  .table-card-mobile tr {
+    display: block;
+  }
+
+  .table-card-mobile thead tr {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+
+  .table-card-mobile tbody tr {
+    margin-bottom: 0.75rem;
+    border: 1px solid hsl(var(--line));
+    border-radius: var(--radius-lg);
+    padding: 0.75rem 1rem;
+    background: hsl(var(--paper));
+  }
+
+  .table-card-mobile td {
+    padding: 0.35rem 0;
+    padding-left: 45%;
+    position: relative;
+    text-align: left;
+    border: none;
+  }
+
+  .table-card-mobile td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 0;
+    width: 42%;
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
 }

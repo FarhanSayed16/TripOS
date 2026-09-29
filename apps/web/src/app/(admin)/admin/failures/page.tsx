@@ -31,7 +31,7 @@ export default function AdminFailuresPage() {
   const refunds = refundsData?.items || [];
 
   if (loadingJobs || loadingBookings || loadingRefunds) {
-    return <div className="p-8 text-gray-500">Loading failures…</div>;
+    return <div className="p-8 text-muted-foreground">Loading failures…</div>;
   }
 
   const markRefund = async (id: string, status: string) => {
@@ -55,7 +55,7 @@ export default function AdminFailuresPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-ink">Failures</h1>
-        <p className="text-gray-500">
+        <p className="text-muted-foreground">
           Dead-letter jobs, failed bookings, and refund queue. Issue money movement in
           Razorpay, then mark status here.
         </p>
@@ -80,12 +80,12 @@ export default function AdminFailuresPage() {
                   : color === "purple"
                     ? "border-purple-600 text-purple-700"
                     : "border-focus text-focus"
-                : "border-transparent text-gray-500 hover:text-ink"
+                : "border-transparent text-muted-foreground hover:text-ink"
             }`}
           >
             {label}
             {count > 0 && (
-              <span className="ml-2 bg-gray-100 text-gray-700 py-0.5 px-2 rounded-full text-xs">
+              <span className="ml-2 bg-surface text-ink/80 py-0.5 px-2 rounded-full text-xs">
                 {count}
               </span>
             )}
@@ -98,7 +98,7 @@ export default function AdminFailuresPage() {
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="text-xs text-gray-500 uppercase bg-surface">
+                <thead className="text-xs text-muted-foreground uppercase bg-surface">
                   <tr>
                     <th className="px-4 py-3">Type</th>
                     <th className="px-4 py-3">Payload</th>
@@ -111,14 +111,14 @@ export default function AdminFailuresPage() {
                   {(deadLetters || []).map((job) => (
                     <tr
                       key={job.id}
-                      className="border-b border-line last:border-0 hover:bg-gray-50/50 align-top"
+                      className="border-b border-line last:border-0 hover:bg-surface/50 align-top"
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2 font-medium text-ink">
                           <ServerCrash className="w-4 h-4 text-amber-600" />
                           {job.type}
                         </div>
-                        <div className="text-xs font-mono text-gray-400 mt-1">
+                        <div className="text-xs font-mono text-muted-foreground/60 mt-1">
                           {job.id.slice(0, 8)}…
                         </div>
                       </td>
@@ -129,14 +129,14 @@ export default function AdminFailuresPage() {
                       <td className="px-4 py-3 text-xs text-red-600 max-w-[240px]">
                         {job.error_details || "—"}
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-500">
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
                         {job.updated_at || "—"}
                       </td>
                     </tr>
                   ))}
                   {(deadLetters || []).length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                      <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                         No dead-letter jobs.
                       </td>
                     </tr>
@@ -153,7 +153,7 @@ export default function AdminFailuresPage() {
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="text-xs text-gray-500 uppercase bg-surface">
+                <thead className="text-xs text-muted-foreground uppercase bg-surface">
                   <tr>
                     <th className="px-4 py-3">Booking</th>
                     <th className="px-4 py-3">Org</th>
@@ -172,12 +172,12 @@ export default function AdminFailuresPage() {
                           {formatFailureReason(b.failure_reason)}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-500">{b.created_at}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{b.created_at}</td>
                     </tr>
                   ))}
                   {failedBookings.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                      <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
                         No failed bookings.
                       </td>
                     </tr>
@@ -194,7 +194,7 @@ export default function AdminFailuresPage() {
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="text-xs text-gray-500 uppercase bg-surface">
+                <thead className="text-xs text-muted-foreground uppercase bg-surface">
                   <tr>
                     <th className="px-4 py-3">Refund</th>
                     <th className="px-4 py-3">Amount</th>
@@ -209,7 +209,7 @@ export default function AdminFailuresPage() {
                       <td className="px-4 py-3 font-mono text-xs">
                         {r.id.slice(0, 8)}…
                         {r.quote_id && (
-                          <div className="text-gray-400 mt-1">quote {String(r.quote_id).slice(0, 8)}…</div>
+                          <div className="text-muted-foreground/60 mt-1">quote {String(r.quote_id).slice(0, 8)}…</div>
                         )}
                       </td>
                       <td className="px-4 py-3 font-medium">
@@ -220,7 +220,7 @@ export default function AdminFailuresPage() {
                           {r.status}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-600">
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
                         {r.reason || "—"}
                         {r.gateway_refund_id && (
                           <div className="font-mono mt-1">{r.gateway_refund_id}</div>
@@ -263,7 +263,7 @@ export default function AdminFailuresPage() {
                   ))}
                   {refunds.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                      <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                         No refunds yet.
                       </td>
                     </tr>

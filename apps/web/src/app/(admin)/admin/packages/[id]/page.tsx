@@ -97,7 +97,7 @@ export default function PackageDetailPage() {
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/admin/packages" className="text-gray-500 hover:text-ink">
+          <Link href="/admin/packages" className="text-muted-foreground hover:text-ink">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
@@ -107,7 +107,7 @@ export default function PackageDetailPage() {
                 {pkg.status}
               </Badge>
             </div>
-            <p className="text-gray-500">{pkg.destination} • {pkg.duration_days} Days</p>
+            <p className="text-muted-foreground">{pkg.destination} • {pkg.duration_days} Days</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -131,19 +131,19 @@ export default function PackageDetailPage() {
             </CardHeader>
             <CardContent>
               {pkg.items.length === 0 ? (
-                <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-md border border-dashed border-gray-300">
+                <div className="text-center py-6 text-muted-foreground bg-surface rounded-md border border-dashed border-line">
                   No items in this package yet.
                 </div>
               ) : (
                 <div className="space-y-3">
                   {pkg.items.map((item) => (
-                    <div key={item.id} className="flex justify-between items-center p-3 border border-line rounded-md hover:border-gray-300">
+                    <div key={item.id} className="flex justify-between items-center p-3 border border-line rounded-md hover:border-line">
                       <div>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline">{item.type}</Badge>
                           <span className="font-medium">{item.title}</span>
                         </div>
-                        <div className="text-sm text-gray-500 mt-1">
+                        <div className="text-sm text-muted-foreground mt-1">
                           Est. Cost: {formatCurrency(item.estimated_cost_paise)}
                         </div>
                       </div>
@@ -194,7 +194,7 @@ export default function PackageDetailPage() {
                     <button
                       type="submit"
                       disabled={isAdding}
-                      className="bg-gray-100 hover:bg-gray-200 text-ink px-4 py-2 rounded-md font-medium flex items-center transition-colors disabled:opacity-50"
+                      className="bg-surface hover:bg-line text-ink px-4 py-2 rounded-md font-medium flex items-center transition-colors disabled:opacity-50"
                     >
                       <Plus className="w-4 h-4 mr-2" />
                       Add Item
@@ -220,7 +220,7 @@ export default function PackageDetailPage() {
               {isEditing ? (
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs text-gray-500">Title</label>
+                    <label className="text-xs text-muted-foreground">Title</label>
                     <input
                       type="text"
                       className="w-full border border-line rounded-md px-2 py-1 text-sm mt-1"
@@ -229,7 +229,7 @@ export default function PackageDetailPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500">Destination</label>
+                    <label className="text-xs text-muted-foreground">Destination</label>
                     <input
                       type="text"
                       className="w-full border border-line rounded-md px-2 py-1 text-sm mt-1"
@@ -239,7 +239,7 @@ export default function PackageDetailPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-xs text-gray-500">Days</label>
+                      <label className="text-xs text-muted-foreground">Days</label>
                       <input
                         type="number"
                         className="w-full border border-line rounded-md px-2 py-1 text-sm mt-1"
@@ -248,7 +248,7 @@ export default function PackageDetailPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-gray-500">Base Price (₹)</label>
+                      <label className="text-xs text-muted-foreground">Base Price (₹)</label>
                       <input
                         type="number"
                         className="w-full border border-line rounded-md px-2 py-1 text-sm mt-1"
@@ -260,7 +260,7 @@ export default function PackageDetailPage() {
                   <div className="flex justify-end gap-2 pt-2">
                     <button
                       onClick={() => setIsEditing(false)}
-                      className="px-3 py-1 text-sm text-gray-500 hover:bg-gray-100 rounded-md"
+                      className="px-3 py-1 text-sm text-muted-foreground hover:bg-surface rounded-md"
                     >
                       Cancel
                     </button>
@@ -275,19 +275,19 @@ export default function PackageDetailPage() {
               ) : (
                 <div className="space-y-4">
                   <div>
-                    <div className="text-xs text-gray-500">Base Price</div>
+                    <div className="text-xs text-muted-foreground">Base Price</div>
                     <div className="font-medium">{formatCurrency(pkg.base_price_paise)}</div>
                   </div>
                   <div>
-                    <div className="text-xs text-gray-500">Duration</div>
+                    <div className="text-xs text-muted-foreground">Duration</div>
                     <div className="font-medium">{pkg.duration_days} Days</div>
                   </div>
                   <div>
-                    <div className="text-xs text-gray-500">Destination</div>
+                    <div className="text-xs text-muted-foreground">Destination</div>
                     <div className="font-medium">{pkg.destination}</div>
                   </div>
                   <div>
-                    <div className="text-xs text-gray-500">Total Items</div>
+                    <div className="text-xs text-muted-foreground">Total Items</div>
                     <div className="font-medium">{pkg.items.length} items</div>
                   </div>
                 </div>

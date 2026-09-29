@@ -83,7 +83,7 @@ export default function BrandingAdminPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (isLoading) return <div className="p-8 text-gray-500">Loading...</div>;
+  if (isLoading) return <div className="p-8 text-muted-foreground">Loading...</div>;
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -92,7 +92,7 @@ export default function BrandingAdminPage() {
           <Globe className="w-8 h-8 text-brand_primary" />
           White-Label & Branding
         </h1>
-        <p className="text-gray-500 mt-2">Manage your agency's public presentation and custom domains.</p>
+        <p className="text-muted-foreground mt-2">Manage your agency's public presentation and custom domains.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -103,7 +103,7 @@ export default function BrandingAdminPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Primary Color (Hex)</label>
+              <label className="block text-sm font-medium text-ink/80 mb-1">Primary Color (Hex)</label>
               <div className="flex gap-3">
                 <input
                   type="color"
@@ -121,7 +121,7 @@ export default function BrandingAdminPage() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Logo URL</label>
+              <label className="block text-sm font-medium text-ink/80 mb-1">Logo URL</label>
               <input
                 type="text"
                 value={logoUrl}
@@ -162,13 +162,13 @@ export default function BrandingAdminPage() {
                       {d.is_verified ? "Verified" : "Pending Verification"}
                     </Badge>
                   </div>
-                  <button onClick={() => handleDeleteDomain(d.id)} className="text-gray-400 hover:text-red-500">
+                  <button onClick={() => handleDeleteDomain(d.id)} className="text-muted-foreground/60 hover:text-red-500">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               ))}
               {domains?.length === 0 && (
-                <p className="text-sm text-gray-500 text-center py-4">No custom domains added.</p>
+                <p className="text-sm text-muted-foreground text-center py-4">No custom domains added.</p>
               )}
             </div>
 
@@ -176,7 +176,7 @@ export default function BrandingAdminPage() {
               <p className="font-semibold mb-1">DNS Setup Instructions</p>
               <p>To verify your domain, create a CNAME record pointing to:</p>
               <div className="mt-2 flex items-center gap-2">
-                <code className="bg-white px-2 py-1 rounded border border-blue-200 font-mono flex-1">cname.tripos.com</code>
+                <code className="bg-paper px-2 py-1 rounded border border-blue-200 font-mono flex-1">cname.tripos.com</code>
                 <Button variant="outline" size="sm" onClick={handleCopyCNAME} className="h-8 shrink-0">
                   {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
                 </Button>
