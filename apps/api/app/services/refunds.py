@@ -99,6 +99,22 @@ async def update_refund_status(
             "notes": refund.notes,
         },
     )
+    try:
+        from app.services.partner_webhooks import dispatch_partner_event
+
+        await dispatch_partner_event(
+            db,
+            refund.organization_id,
+            "refund.updated",
+            {
+                "refund_id": str(refund.id),
+                "payment_id": str(refund.payment_id) if refund.payment_id else None,
+                "status": status.value,
+                "amount_paise": refund.amount,
+            },
+        )
+    except Exception:
+        pass
     return refund
 
 

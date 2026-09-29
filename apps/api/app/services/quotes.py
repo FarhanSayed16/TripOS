@@ -219,19 +219,64 @@ async def create_quote(quote_in: QuoteCreate, current_user: User, db: AsyncSessi
                 display_currency=display_currency,
             )
 
+        try:
+            search_request_uuid = uuid.UUID(str(item_in.search_request_id))
+        except (ValueError, TypeError, AttributeError) as e:
+            raise AppError(
+                "search_request_id must be a valid UUID from a prior search",
+                status_code=400,
+                error_code="INVALID_SEARCH_REQUEST_ID",
+            ) from e
+
+        search_row = await db.get(SearchRequest, search_request_uuid)
+        if not search_row:
+            raise AppError(
+                "search_request_id not found — run search again and use the returned id",
+                status_code=400,
+                error_code="SEARCH_REQUEST_NOT_FOUND",
+            )
+        if (
+            current_user.active_organization_id
+            and search_row.organization_id
+            and search_row.organization_id != current_user.active_organization_id
+        ):
+            raise AppError(
+                "search_request_id does not belong to your organization",
+                status_code=403,
+                error_code="SEARCH_REQUEST_FORBIDDEN",
+            )
+
         snapshot = OfferSnapshot(
-            search_request_id=uuid.UUID(item_in.search_request_id),
+            search_request_id=search_request_uuid,
             supplier_id=supplier.id,
             supplier_offer_id=item_in.offer.supplier_reference,
             offer_data=offer_dump,
         )
         db.add(snapshot)
-        await db.flush()
+        try:
+            await db.flush()
+        except Exception as e:
+            from sqlalchemy.exc import IntegrityError
+
+            if isinstance(e, IntegrityError):
+                raise AppError(
+                    "Invalid search_request_id or supplier reference",
+                    status_code=400,
+                    error_code="INVALID_SEARCH_REQUEST_ID",
+                ) from e
+            raise
 
         supplier_cost = int(item_in.offer.total_amount * 100)
         agent_markup = item_in.agent_markup
         platform_fee = int(settings.PLATFORM_FEE_PAISE or 0)
-        customer_total = supplier_cost + agent_markup + platform_fee
+        # FC Phase 6 — extras from request or offer.raw_data.selected_extras
+        from app.services.ancillaries import extras_total_paise
+
+        extras_raw = list(item_in.extras or [])
+        if not extras_raw:
+            extras_raw = list((item_in.offer.raw_data or {}).get("selected_extras") or [])
+        extras_sum = extras_total_paise(extras_raw)
+        customer_total = supplier_cost + agent_markup + platform_fee + extras_sum
 
         db.add(
             QuoteItem(
@@ -241,6 +286,8 @@ async def create_quote(quote_in: QuoteCreate, current_user: User, db: AsyncSessi
                 agent_markup=agent_markup,
                 platform_fee=platform_fee,
                 customer_total=customer_total,
+                extras=extras_raw,
+                extras_total=extras_sum,
             )
         )
 
@@ -375,6 +422,7 @@ async def refresh_quote(quote_id: str, current_user: User, db: AsyncSession) -> 
             else str(offer_model.type)
         )
 
+        item_extras_for_new = list(getattr(item, "extras", None) or [])
         try:
             refreshed = await revalidate_normalized_offer(
                 offer_model,
@@ -386,11 +434,16 @@ async def refresh_quote(quote_id: str, current_user: User, db: AsyncSession) -> 
             # Accept new fare path: apply supplier's new total and clear fail-sim flags
             if e.error_code == "fare_changed" and e.new_total_paise is not None:
                 refreshed = _apply_fare_change_to_offer(offer_model, e.new_total_paise)
+                # FC Phase 6 — stale seats cleared on fare change
+                from app.services.ancillaries import clear_seat_extras
+
+                item_extras_for_new = clear_seat_extras(item_extras_for_new)
                 logger.info(
                     "refresh_quote_accepted_fare_change",
                     quote_id=str(quote.id),
                     previous_total_paise=e.previous_total_paise,
                     new_total_paise=e.new_total_paise,
+                    seats_cleared=True,
                 )
             else:
                 raise AppError(
@@ -420,6 +473,11 @@ async def refresh_quote(quote_id: str, current_user: User, db: AsyncSession) -> 
                 error_code="INVENTORY_UNAVAILABLE",
             ) from e
 
+        # Attach remaining extras onto refreshed snapshot for book honesty
+        from app.services.ancillaries import attach_extras_to_offer, extras_total_paise
+
+        refreshed = attach_extras_to_offer(refreshed, item_extras_for_new)
+
         new_snap = OfferSnapshot(
             search_request_id=snap.search_request_id,
             supplier_id=snap.supplier_id,
@@ -432,7 +490,8 @@ async def refresh_quote(quote_id: str, current_user: User, db: AsyncSession) -> 
         supplier_cost = int(refreshed.total_amount * 100)
         agent_markup = item.agent_markup
         platform_fee = int(settings.PLATFORM_FEE_PAISE or 0)
-        customer_total = supplier_cost + agent_markup + platform_fee
+        extras_sum = extras_total_paise(item_extras_for_new)
+        customer_total = supplier_cost + agent_markup + platform_fee + extras_sum
 
         new_item_rows.append(
             {
@@ -441,6 +500,8 @@ async def refresh_quote(quote_id: str, current_user: User, db: AsyncSession) -> 
                 "agent_markup": agent_markup,
                 "platform_fee": platform_fee,
                 "customer_total": customer_total,
+                "extras": item_extras_for_new,
+                "extras_total": extras_sum,
             }
         )
 

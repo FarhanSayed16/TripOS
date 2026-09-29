@@ -27,11 +27,14 @@ def cache_key(supplier_code: str, query: SearchQuery) -> str:
     inv_type = query.type.value if hasattr(query.type, "value") else str(query.type)
     ret = query.return_date.isoformat() if query.return_date else "-"
     pax = query.passengers
+    deal = (query.deal_code or "").strip().upper() or "-"
+    if deal == "-" and query.deal_codes:
+        deal = ",".join(sorted(str(c).strip().upper() for c in query.deal_codes if c)) or "-"
     return (
         f"inv:{supplier_code}:{inv_type}:"
         f"{query.origin.upper()}:{query.destination.upper()}:"
         f"{query.departure_date.isoformat()}:{ret}:"
-        f"{pax.adults}:{pax.children}:{pax.infants}"
+        f"{pax.adults}:{pax.children}:{pax.infants}:deal:{deal}"
     )
 
 
