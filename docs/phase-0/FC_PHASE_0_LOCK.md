@@ -17,6 +17,9 @@
 | Locales V1 | **en**, **hi** | — |
 | B2C product | Separate company; TripOS Partner API = FC Phase 8 | All |
 | L2B provisional | warn 80 / critical 120 until Sahil contract truth | Sahil |
+| NDC adapter | **OFF** (`FC_NDC_ENABLED=false`) until matrix says yes | Sahil/Nilesh |
+| LCC distinct feed | **OFF** (`FC_LCC_ENABLED=false`) until matrix says yes | Sahil/Nilesh |
+| Reissue automation | Mock on (`FC_REISSUE_ENABLED=true`); live needs matrix yes | — |
 
 ## Templates created
 
