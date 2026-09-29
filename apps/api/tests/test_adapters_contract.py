@@ -53,12 +53,15 @@ async def test_registry_resolves_mock(adapter: BaseAdapter):
 @pytest.mark.asyncio
 async def test_flight_search_returns_four_offers(adapter: BaseAdapter):
     offers = await adapter.search(_flight_query())
-    assert len(offers) == 4
+    # FC Phase 6: Basic/Flex/Premium variants + fixtures → at least 4
+    assert len(offers) >= 4
     assert all(o.type == InventoryType.FLIGHT for o in offers)
     assert all(o.currency == "INR" for o in offers)
     refs = {o.supplier_reference for o in offers}
     assert "MOCK-FLIGHT-FARE-CHG" in refs
     assert "MOCK-FLIGHT-SOLD-OUT" in refs
+    families = {o.fare_family for o in offers if o.fare_family}
+    assert "Basic" in families and "Flex" in families
 
 
 @pytest.mark.asyncio
