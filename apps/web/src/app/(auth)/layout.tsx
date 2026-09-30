@@ -20,8 +20,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="absolute inset-0 -z-10 bg-ink overflow-hidden">
           {/* Abstract glowing orbs */}
           <div className="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] rounded-full bg-teal-500/20 blur-[120px] mix-blend-screen" />
-          <div className="absolute top-[40%] -right-[20%] w-[60%] h-[60%] rounded-full bg-blue-500/10 blur-[100px] mix-blend-screen" />
-          <div className="absolute -bottom-[20%] left-[20%] w-[80%] h-[80%] rounded-full bg-indigo-500/15 blur-[120px] mix-blend-screen" />
+          <div className="absolute top-[40%] -right-[20%] w-[60%] h-[60%] rounded-full bg-teal/15 blur-[100px] mix-blend-screen" />
+          <div className="absolute -bottom-[20%] left-[20%] w-[80%] h-[80%] rounded-full bg-teal-dark/20 blur-[120px] mix-blend-screen" />
 
           {/* World Map watermark — faint, behind everything */}
           <LottieWorldMap />

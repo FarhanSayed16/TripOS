@@ -46,8 +46,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
           <div className="flex items-center gap-6 text-xs text-muted-foreground">
             <Link href="#features" className="hover:text-ink transition-colors">Features</Link>
             <Link href="#how-it-works" className="hover:text-ink transition-colors">How it Works</Link>
-            <Link href="/login" className="hover:text-ink transition-colors">Privacy</Link>
-            <Link href="/login" className="hover:text-ink transition-colors">Contact</Link>
+            <a href="mailto:hello@tripos.com" className="hover:text-ink transition-colors">Contact</a>
           </div>
         </div>
       </footer>

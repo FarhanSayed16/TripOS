@@ -187,7 +187,7 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <div className="pt-4 border-t border-line">
-                    <Button onClick={() => showMessage("Organization profile saved successfully.")} className="bg-teal hover:bg-teal-dark">Save Profile</Button>
+                    <Button onClick={() => showMessage("Preview only — organization profile API save is not wired yet.")} className="bg-teal hover:bg-teal-dark">Save Profile (preview)</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -397,7 +397,7 @@ export default function SettingsPage() {
                   </div>
                   
                   <div className="pt-4 border-t border-line">
-                    <Button onClick={() => showMessage("AI Preferences saved.")} className="bg-teal hover:bg-teal-dark">Save AI Preferences</Button>
+                    <Button onClick={() => showMessage("Preview only — AI preferences are not persisted yet.")} className="bg-teal hover:bg-teal-dark">Save AI Preferences (preview)</Button>
                   </div>
                 </CardContent>
               </Card>

@@ -21,7 +21,7 @@ export default function MarketingPage() {
     e.preventDefault();
     if (!email) return;
     setJoined(true);
-    // Real implementation would hit an API
+    // Waitlist endpoint not wired yet — store locally for now
   };
 
   return (
@@ -70,9 +70,9 @@ export default function MarketingPage() {
         {/* CTAs / Waitlist Inline Form */}
         <div className="mt-10 w-full max-w-md mx-auto">
           {joined ? (
-            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-xl flex items-center justify-center gap-2 shadow-sm animate-in zoom-in-95">
-              <Check className="w-5 h-5 text-emerald-600" />
-              <span className="font-semibold">You're on the list! Keep an eye on your inbox.</span>
+            <div className="bg-mint/10 border border-mint/25 text-ink p-4 rounded-xl flex items-center justify-center gap-2 shadow-sm animate-in zoom-in-95">
+              <Check className="w-5 h-5 text-mint" />
+              <span className="font-semibold">You&apos;re on the list! We&apos;ll email you when access opens.</span>
             </div>
           ) : (
             <form onSubmit={handleJoinWaitlist} className="flex flex-col sm:flex-row gap-3">
@@ -159,14 +159,14 @@ export default function MarketingPage() {
       </section>
 
       {/* ── Workflow Steps / Features ── */}
-      <section className="w-full bg-paper border-t border-line py-24">
+      <section id="features" className="w-full bg-paper border-t border-line py-24 scroll-mt-20">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-ink">Everything you need to scale</h2>
             <p className="mt-4 text-muted-foreground max-w-xl mx-auto">Replace a dozen fragmented tools with one cohesive platform designed specifically for travel professionals.</p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+          <div id="how-it-works" className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 scroll-mt-24">
             {steps.map((step, i) => {
               const Icon = step.icon;
               return (

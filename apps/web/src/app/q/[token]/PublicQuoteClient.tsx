@@ -91,8 +91,8 @@ function PublicQuoteInner({ token }: { token: string }) {
 
   const agency = theme?.brand_name || quote.agency_name || "TripOS";
   const logoUrl = theme?.logo_url || quote.agency_logo_url;
-  const primaryColor = theme?.primary_color || "#3A86FF";
-  const buttonStyle = theme?.primary_color ? { backgroundColor: theme.primary_color } : {};
+  const primaryColor = theme?.primary_color || "#0D9488";
+  const buttonStyle = theme?.primary_color ? { backgroundColor: theme.primary_color } : { backgroundColor: "#0D9488" };
   const dfLocale = locale === "hi" ? hiLocale : enIN;
   const guaranteedDate = format(new Date(quote.valid_until), "MMM d, h:mm a", {
     locale: dfLocale,
@@ -112,8 +112,26 @@ function PublicQuoteInner({ token }: { token: string }) {
             ) : null}
             <div className="font-display text-xl tracking-tight text-ink truncate">{agency}</div>
           </div>
-          <div className="text-sm font-medium bg-sand px-3 py-1 rounded-full shrink-0">
-            {t("publicQuote.quoteLabel")} #{quote.id.split("-")[0].toUpperCase()}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center bg-sand border border-line rounded-md p-0.5" role="group" aria-label="Language">
+              <button
+                type="button"
+                onClick={() => setLocale("en")}
+                className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${locale === "en" ? "bg-paper shadow-sm text-ink" : "text-muted-foreground"}`}
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                onClick={() => setLocale("hi")}
+                className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${locale === "hi" ? "bg-paper shadow-sm text-ink" : "text-muted-foreground"}`}
+              >
+                हिं
+              </button>
+            </div>
+            <div className="text-sm font-medium bg-sand px-3 py-1 rounded-full">
+              {t("publicQuote.quoteLabel")} #{quote.id.split("-")[0].toUpperCase()}
+            </div>
           </div>
         </div>
       </header>
@@ -130,8 +148,8 @@ function PublicQuoteInner({ token }: { token: string }) {
         )}
 
         {!isExpired && (
-          <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-lg flex gap-3 items-center">
-            <CheckCircle2 className="w-5 h-5 shrink-0" />
+          <div className="bg-teal/5 border border-teal/20 text-teal-dark p-4 rounded-lg flex gap-3 items-center">
+            <CheckCircle2 className="w-5 h-5 shrink-0 text-teal" />
             <p className="text-sm font-medium">
               {t("publicQuote.guaranteedUntil", { date: guaranteedDate })}
             </p>
@@ -212,7 +230,12 @@ function PublicQuoteInner({ token }: { token: string }) {
         </Card>
       </main>
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-paper border-t border-line p-4 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] z-20">
+      <footer className="max-w-3xl mx-auto px-4 pb-8 pt-2 text-center text-xs text-muted-foreground space-y-1">
+        <p>Secure payment · Prices guaranteed until {guaranteedDate}</p>
+        <p>Powered by TripOS · Quote issued by {agency}</p>
+      </footer>
+
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-paper border-t border-line p-4 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] z-20 pb-safe">
         <div className="flex justify-between items-center mb-3">
           <span className="text-sm font-medium text-muted-foreground">{t("publicQuote.total")}</span>
           <span className="text-xl font-bold text-ink">{totalLabel}</span>
