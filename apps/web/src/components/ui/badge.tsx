@@ -20,21 +20,21 @@ const badgeVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
         /* ── Semantic status variants ── */
         confirmed:
-          "bg-emerald-50 text-emerald-700 border-emerald-200 status-dot",
+          "bg-mint/10 text-mint border-mint/25 status-dot",
         active:
-          "bg-emerald-50 text-emerald-700 border-emerald-200 status-dot",
+          "bg-mint/10 text-mint border-mint/25 status-dot",
         pending:
-          "bg-amber-50 text-amber-700 border-amber-200 status-dot",
+          "bg-amber/10 text-amber border-amber/25 status-dot",
         draft:
-          "bg-slate-50 text-slate-600 border-slate-200 status-dot",
+          "bg-sand text-muted-foreground border-line status-dot",
         failed:
-          "bg-red-50 text-red-700 border-red-200 status-dot",
+          "bg-coral/10 text-coral border-coral/25 status-dot",
         expired:
-          "bg-red-50 text-red-600 border-red-200 status-dot",
+          "bg-coral/10 text-coral border-coral/25 status-dot",
         sent:
-          "bg-blue-50 text-blue-700 border-blue-200 status-dot",
+          "bg-teal/10 text-teal-dark border-teal/20 status-dot",
         ready:
-          "bg-blue-50 text-blue-700 border-blue-200 status-dot",
+          "bg-teal/10 text-teal-dark border-teal/20 status-dot",
         paid:
           "bg-teal/5 text-teal border-teal/20 status-dot",
         captured:
@@ -42,13 +42,13 @@ const badgeVariants = cva(
         cancelled:
           "bg-surface text-muted-foreground border-line status-dot",
         refunded:
-          "bg-violet-50 text-violet-700 border-violet-200 status-dot",
+          "bg-amber/10 text-amber border-amber/25 status-dot",
         live:
           "bg-teal/10 text-teal-dark border-teal/20 status-dot",
         simulated:
-          "bg-blue-50 text-blue-700 border-blue-200 status-dot",
+          "bg-sand text-ink/70 border-line status-dot",
         mock:
-          "bg-amber-50 text-amber-700 border-amber-200 status-dot",
+          "bg-amber/10 text-amber border-amber/25 status-dot",
       },
     },
     defaultVariants: {
