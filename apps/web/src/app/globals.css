@@ -219,7 +219,7 @@
   box-shadow: 0 4px 12px 0 rgb(0 0 0 / 0.06);
   transform: translateY(-1px);
 }
-.card-stat.accent-blue   { border-left-color: hsl(210 80% 55%); }
+.card-stat.accent-blue   { border-left-color: hsl(var(--teal)); }
 .card-stat.accent-green  { border-left-color: hsl(var(--mint)); }
 .card-stat.accent-amber  { border-left-color: hsl(var(--amber)); }
 .card-stat.accent-coral  { border-left-color: hsl(var(--coral)); }
@@ -457,4 +457,12 @@
     text-transform: uppercase;
     letter-spacing: 0.03em;
   }
+}
+
+/* Safe-area padding for mobile chrome / sticky bars */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
 }

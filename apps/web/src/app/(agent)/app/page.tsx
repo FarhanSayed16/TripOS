@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   Clock,
   CheckCircle2,
-  Search,
   ArrowRight,
   TrendingUp,
   Wallet,
@@ -28,11 +27,16 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { format } from "date-fns";
+import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const router = useRouter();
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [searchTab, setSearchTab] = useState<"flights" | "hotels">("flights");
   const { data: failed = [], isLoading: loadingFailed } = useGetBookingsQuery({ status: "failed" });
   const { data: pendingBookings = [], isLoading: loadingPending } = useGetBookingsQuery({ status: "pending" });
   const { data: allBookings = [] } = useGetBookingsQuery(undefined);
@@ -51,7 +55,7 @@ export default function DashboardPage() {
 
   // Computed KPIs from live data
   const bookingCount = allBookings.length;
-  const gmvPaise = useMemo(() => allBookings.reduce((s, b) => s + (b.quote?.total_amount || 0), 0), [allBookings]);
+  const gmvPaise = useMemo(() => allBookings.reduce((s, b) => s + (b.quote?.total_price || 0), 0), [allBookings]);
   const gmvFormatted = useMemo(() => {
     const val = gmvPaise / 100;
     if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L`;
@@ -181,33 +185,81 @@ export default function DashboardPage() {
         {/* 4. Embedded Search Widget */}
         <div className="card-elevated p-6">
           <div className="flex items-center gap-6 mb-6 border-b border-line pb-4">
-            <button className="flex items-center gap-2 text-sm font-semibold text-teal border-b-2 border-teal pb-4 -mb-[18px]">
+            <button
+              type="button"
+              onClick={() => setSearchTab("flights")}
+              className={`flex items-center gap-2 text-sm pb-4 -mb-[18px] ${
+                searchTab === "flights"
+                  ? "font-semibold text-teal border-b-2 border-teal"
+                  : "font-medium text-muted-foreground hover:text-ink"
+              }`}
+            >
               <Plane className="w-4 h-4" /> Flights
             </button>
-            <button className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-ink pb-4 -mb-[18px]">
+            <button
+              type="button"
+              onClick={() => setSearchTab("hotels")}
+              className={`flex items-center gap-2 text-sm pb-4 -mb-[18px] ${
+                searchTab === "hotels"
+                  ? "font-semibold text-teal border-b-2 border-teal"
+                  : "font-medium text-muted-foreground hover:text-ink"
+              }`}
+            >
               <Building className="w-4 h-4" /> Hotels
             </button>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex gap-3 items-center">
-            <Input placeholder="From (DEL)" className="h-11 lg:w-40" />
-            <button className="hidden lg:flex h-8 w-8 rounded-full bg-sand items-center justify-center hover:bg-line transition-colors flex-shrink-0">
-              <ArrowLeftRight className="w-4 h-4 text-ink/70" />
-            </button>
-            <Input placeholder="To (BOM)" className="h-11 lg:w-40" />
-            <div className="relative flex-1">
-              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Dates" className="h-11 pl-9 w-full" defaultValue="Tomorrow" />
-            </div>
-            <div className="relative flex-1">
-              <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Pax" className="h-11 pl-9 w-full" defaultValue="1 Adult, Economy" />
-            </div>
-            <Input placeholder="Deal Code" className="h-11 font-mono text-sm lg:w-32" />
-            <Button size="xl" variant="gradient" className="h-11 px-8 rounded-lg w-full lg:w-auto" asChild>
-              <Link href="/app/search">Search</Link>
+          <form
+            className="grid grid-cols-1 sm:grid-cols-2 lg:flex gap-3 items-center"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const params = new URLSearchParams({ tab: searchTab });
+              if (from) params.set("from", from.trim().toUpperCase());
+              if (to) params.set("to", to.trim().toUpperCase());
+              router.push(`/app/search?${params.toString()}`);
+            }}
+          >
+            {searchTab === "flights" ? (
+              <>
+                <Input
+                  placeholder="From (DEL)"
+                  className="h-11 lg:w-40"
+                  value={from}
+                  onChange={(e) => setFrom(e.target.value)}
+                  aria-label="Origin"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFrom(to);
+                    setTo(from);
+                  }}
+                  className="hidden lg:flex h-8 w-8 rounded-full bg-sand items-center justify-center hover:bg-line transition-colors flex-shrink-0"
+                  aria-label="Swap origin and destination"
+                >
+                  <ArrowLeftRight className="w-4 h-4 text-ink/70" />
+                </button>
+                <Input
+                  placeholder="To (BOM)"
+                  className="h-11 lg:w-40"
+                  value={to}
+                  onChange={(e) => setTo(e.target.value)}
+                  aria-label="Destination"
+                />
+              </>
+            ) : (
+              <Input
+                placeholder="City or hotel"
+                className="h-11 lg:flex-1"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                aria-label="Hotel city"
+              />
+            )}
+            <Button type="submit" size="xl" variant="gradient" className="h-11 px-8 rounded-lg w-full lg:w-auto">
+              Search
             </Button>
-          </div>
+          </form>
         </div>
 
         {/* 5. Recent Bookings Table */}
@@ -225,9 +277,9 @@ export default function DashboardPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Customer</TableHead>
-                  <TableHead>Route</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>PNR</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
                   <TableHead className="text-right">Date</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
@@ -236,19 +288,28 @@ export default function DashboardPage() {
                 {recentBookings.map((booking) => (
                   <TableRow key={booking.id}>
                     <TableCell>{booking.quote?.customer_name || "Customer"}</TableCell>
-                    <TableCell>{booking.quote?.route || "—"}</TableCell>
                     <TableCell>
-                      <Badge variant={booking.status === "confirmed" ? "confirmed" : booking.status === "failed" ? "destructive" : "pending"}>
+                      <Badge variant={booking.status === "confirmed" ? "confirmed" : booking.status === "failed" ? "failed" : "pending"}>
                         {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                       </Badge>
                     </TableCell>
                     <TableCell className="font-mono">{booking.supplier_pnr || "—"}</TableCell>
+                    <TableCell className="text-right font-mono text-sm">
+                      {typeof booking.quote?.total_price === "number"
+                        ? `₹${(booking.quote.total_price / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                        : "—"}
+                    </TableCell>
                     <TableCell className="text-right text-muted-foreground text-sm">
                       {format(new Date(booking.created_at), "MMM d")}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" className="text-teal" asChild>
-                        <Link href={`/app/quotes/${booking.quote_id}`}>Open quote</Link>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-teal"
+                        render={<Link href={`/app/quotes/${booking.quote_id}`} />}
+                      >
+                        Open quote
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -273,7 +334,13 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-3xl font-bold font-mono text-ink tracking-tight mb-4">{walletBalance}</div>
             <div className="flex gap-2">
-              <Button variant="default" className="w-full bg-ink text-white hover:bg-ink/90">Add money</Button>
+              <Button
+                variant="default"
+                className="w-full bg-ink text-white hover:bg-ink/90"
+                render={<Link href="/app/wallet" />}
+              >
+                Add money
+              </Button>
             </div>
             <div className="mt-4 pt-4 border-t border-line">
               <div className="flex justify-between text-sm">

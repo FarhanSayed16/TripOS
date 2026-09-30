@@ -96,12 +96,14 @@ export default function AdminLayout({
         <header className="h-16 bg-paper border-b border-line flex items-center justify-between px-4 sm:px-6">
           <div className="md:hidden flex items-center gap-3">
             <Drawer swipeDirection="left">
-              <DrawerTrigger asChild>
-                <button className="p-2 -ml-2 text-ink hover:bg-surface rounded-md">
-                  <Menu className="w-5 h-5" />
-                </button>
+              <DrawerTrigger
+                render={
+                  <button type="button" className="p-2 -ml-2 text-ink hover:bg-surface rounded-md" aria-label="Open menu" />
+                }
+              >
+                <Menu className="w-5 h-5" />
               </DrawerTrigger>
-              <DrawerContent className="w-64 border-r border-line rounded-none" swipeDirection="left">
+              <DrawerContent className="w-64 border-r border-line rounded-none">
                 <DrawerHeader className="border-b border-line text-left px-6 py-4">
                   <DrawerTitle className="text-xl font-bold text-ink">TripOS Admin</DrawerTitle>
                 </DrawerHeader>
@@ -110,18 +112,21 @@ export default function AdminLayout({
                     const Icon = link.icon;
                     const isActive = pathname === link.href || (link.href !== '/admin' && pathname.startsWith(link.href));
                     return (
-                      <DrawerClose asChild key={link.name}>
-                        <Link 
-                          href={link.href} 
-                          className={`flex items-center gap-3 px-3 py-3 rounded-md font-medium transition-colors ${
-                            isActive 
-                              ? 'text-teal bg-teal/10' 
-                              : 'text-muted-foreground hover:bg-surface hover:text-ink'
-                          }`}
-                        >
-                          <Icon className={`h-5 w-5 ${isActive ? 'text-teal' : 'text-muted-foreground/80'}`} />
-                          {link.name}
-                        </Link>
+                      <DrawerClose
+                        key={link.name}
+                        render={
+                          <Link
+                            href={link.href}
+                            className={`flex items-center gap-3 px-3 py-3 rounded-md font-medium transition-colors ${
+                              isActive
+                                ? 'text-teal bg-teal/10'
+                                : 'text-muted-foreground hover:bg-surface hover:text-ink'
+                            }`}
+                          />
+                        }
+                      >
+                        <Icon className={`h-5 w-5 ${isActive ? 'text-teal' : 'text-muted-foreground/80'}`} />
+                        {link.name}
                       </DrawerClose>
                     )
                   })}

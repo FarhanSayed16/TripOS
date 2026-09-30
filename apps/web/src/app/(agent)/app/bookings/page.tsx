@@ -1,17 +1,26 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useGetBookingsQuery } from "@/lib/api/bookingsApi";
-import { AlertCircle, CheckCircle, Clock, XCircle, CalendarDays, TrendingUp } from "lucide-react";
+import { AlertCircle, CheckCircle, Clock, XCircle, CalendarDays, TrendingUp, Search } from "lucide-react";
 import { format } from "date-fns";
 import { formatFailureReason } from "@/lib/failureLabels";
 import { StaggerContainer } from "@/components/PageTransition";
+import { Input } from "@/components/ui/input";
 
 export default function BookingsDashboard() {
+  const searchParams = useSearchParams();
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
+  const [query, setQuery] = useState("");
   const { data: bookings, isLoading } = useGetBookingsQuery(statusFilter ? { status: statusFilter } : undefined);
   const { data: allBookings } = useGetBookingsQuery(undefined);
+
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q) setQuery(q);
+  }, [searchParams]);
 
   // KPI calculations
   const kpis = useMemo(() => {
@@ -23,6 +32,25 @@ export default function BookingsDashboard() {
       failed: allBookings.filter(b => b.status === "failed").length,
     };
   }, [allBookings]);
+
+  const filteredBookings = useMemo(() => {
+    const list = bookings || [];
+    const q = query.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter((b) => {
+      const hay = [
+        b.id,
+        b.quote_id,
+        b.supplier_pnr,
+        b.quote?.customer_name,
+        b.status,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [bookings, query]);
 
   if (isLoading) {
     return (
@@ -78,7 +106,18 @@ export default function BookingsDashboard() {
           </p>
         </div>
         
-        <div className="flex space-x-2 overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          <div className="relative min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search PNR, customer, quote…"
+              className="pl-9 h-9 bg-paper"
+              aria-label="Filter bookings"
+            />
+          </div>
+          <div className="flex space-x-2 overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
           {["All", "confirmed", "failed", "pending", "cancelled"].map((s) => (
             <button
               key={s}
@@ -92,6 +131,7 @@ export default function BookingsDashboard() {
               {s.charAt(0).toUpperCase() + s.slice(1)}
             </button>
           ))}
+          </div>
         </div>
       </div>
 
@@ -135,19 +175,20 @@ export default function BookingsDashboard() {
                   <th className="px-6 py-4 font-medium">Customer & Quote</th>
                   <th className="px-6 py-4 font-medium">Status</th>
                   <th className="px-6 py-4 font-medium">Supplier PNR</th>
+                  <th className="px-6 py-4 font-medium text-right">Amount</th>
                   <th className="px-6 py-4 font-medium">Date</th>
                   <th className="px-6 py-4 font-medium text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line bg-paper">
-                {bookings?.length === 0 ? (
+                {filteredBookings.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
+                    <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
                       No bookings found.
                     </td>
                   </tr>
                 ) : (
-                  bookings?.map((booking) => (
+                  filteredBookings.map((booking) => (
                     <tr key={booking.id} className="table-row-interactive">
                       <td data-label="Customer" className="px-6 py-4">
                         <div className="font-medium text-ink">{booking.quote?.customer_name || "Unknown Customer"}</div>
@@ -172,6 +213,11 @@ export default function BookingsDashboard() {
                         ) : (
                           <span className="text-muted-foreground/60 italic">None</span>
                         )}
+                      </td>
+                      <td data-label="Amount" className="px-6 py-4 text-right font-mono text-ink">
+                        {typeof booking.quote?.total_price === "number"
+                          ? `₹${(booking.quote.total_price / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                          : "—"}
                       </td>
                       <td data-label="Date" className="px-6 py-4 text-muted-foreground">
                         {format(new Date(booking.created_at), "MMM d, h:mm a")}

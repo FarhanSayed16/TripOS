@@ -19,10 +19,12 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageTransition } from "@/components/PageTransition";
 import { useI18n } from "@/lib/i18n";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger, DrawerClose } from "@/components/ui/drawer";
+import { useGetMyOrganizationQuery } from "@/lib/api/orgApi";
+import { useGetBookingsQuery } from "@/lib/api/bookingsApi";
 
 export default function AgentLayout({
   children,
@@ -33,6 +35,12 @@ export default function AgentLayout({
   const router = useRouter();
   const pathname = usePathname();
   const { t, locale, setLocale } = useI18n();
+  const [globalQuery, setGlobalQuery] = useState("");
+  const { data: org } = useGetMyOrganizationQuery(undefined, { skip: !isAuthenticated });
+  const { data: failedBookings = [] } = useGetBookingsQuery(
+    { status: "failed" },
+    { skip: !isAuthenticated }
+  );
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -96,19 +104,33 @@ export default function AgentLayout({
   const isActive = (href: string) =>
     pathname === href || (href !== "/app" && pathname.startsWith(href));
 
-  const userInitial = user?.email?.charAt(0)?.toUpperCase() || "A";
+  const userInitial =
+    (user?.first_name?.charAt(0) || user?.email?.charAt(0) || "A").toUpperCase();
+  const displayName =
+    [user?.first_name, user?.last_name].filter(Boolean).join(" ") ||
+    user?.email?.split("@")[0] ||
+    "Agent";
+  const agencyName = org?.brand_name || "Your agency";
+  const hasAlerts = failedBookings.length > 0;
 
   const getPageContext = (path: string) => {
-    if (path === "/app") return { title: "Home", subtitle: "Welcome to your workspace" };
-    if (path.startsWith("/app/search")) return { title: "Search", subtitle: "Find flights and hotels" };
-    if (path.startsWith("/app/quotes")) return { title: "Quotes", subtitle: "Manage customer quotes" };
-    if (path.startsWith("/app/bookings")) return { title: "Bookings", subtitle: "View and modify bookings" };
-    if (path.startsWith("/app/wallet")) return { title: "Wallet", subtitle: "Manage your funds" };
-    if (path.startsWith("/app/settings")) return { title: "Settings", subtitle: "Preferences and configuration" };
+    if (path === "/app") return { title: t("nav.home"), subtitle: "Welcome to your workspace" };
+    if (path.startsWith("/app/search")) return { title: t("nav.search"), subtitle: "Find flights and hotels" };
+    if (path.startsWith("/app/quotes")) return { title: t("nav.quotes"), subtitle: "Manage customer quotes" };
+    if (path.startsWith("/app/bookings")) return { title: t("nav.bookings"), subtitle: "View and modify bookings" };
+    if (path.startsWith("/app/wallet")) return { title: t("nav.wallet"), subtitle: "Manage your funds" };
+    if (path.startsWith("/app/settings")) return { title: t("nav.settings"), subtitle: "Preferences and configuration" };
     return { title: "TripOS", subtitle: "Agent Workspace" };
   };
 
   const pageContext = getPageContext(pathname);
+
+  const submitGlobalSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = globalQuery.trim();
+    if (!q) return;
+    router.push(`/app/bookings?q=${encodeURIComponent(q)}`);
+  };
 
   return (
     <div className="flex min-h-screen bg-paper">
@@ -176,15 +198,15 @@ export default function AgentLayout({
               {userInitial}
             </div>
             <div className="flex-1 min-w-0 flex flex-col justify-center">
-              <div className="text-[13px] font-medium text-ink truncate">Sahil Doe</div>
-              <div className="text-[11px] text-muted-foreground truncate">Sahil Travels</div>
+              <div className="text-[13px] font-medium text-ink truncate">{displayName}</div>
+              <div className="text-[11px] text-muted-foreground truncate">{agencyName}</div>
             </div>
             <button
               onClick={logout}
               className="text-[11px] text-muted-foreground hover:text-coral transition-colors flex-shrink-0"
-              title="Logout"
+              title={t("nav.logout")}
             >
-              Log out
+              {t("nav.logout")}
             </button>
           </div>
         </div>
@@ -197,31 +219,46 @@ export default function AgentLayout({
               <h1 className="text-lg font-semibold text-ink leading-tight">{pageContext.title}</h1>
               <span className="text-xs text-muted-foreground">{pageContext.subtitle}</span>
             </div>
-            <div className="relative max-w-md w-full hidden md:block">
+            <form onSubmit={submitGlobalSearch} className="relative max-w-md w-full hidden md:block">
               <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input 
-                type="text" 
+                type="search"
+                value={globalQuery}
+                onChange={(e) => setGlobalQuery(e.target.value)}
                 placeholder="Search bookings, PNR, customer..." 
                 className="w-full pl-9 pr-4 h-9 bg-paper border border-line rounded-lg text-sm focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/30 transition-all placeholder:text-muted-foreground/60"
+                aria-label="Search bookings"
               />
-            </div>
+            </form>
           </div>
           
           <div className="flex items-center gap-4 ml-4">
-            <button className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-muted/50 transition-colors border border-transparent hover:border-line">
-              <span className="text-sm font-medium text-ink">Sahil Travels</span>
+            <button
+              type="button"
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-muted/50 transition-colors border border-transparent hover:border-line"
+              title="Agency"
+              aria-label="Agency"
+            >
+              <span className="text-sm font-medium text-ink">{agencyName}</span>
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
             </button>
             
-            <div className="hidden sm:flex items-center bg-paper border border-line rounded-md p-0.5">
-              <button onClick={() => setLocale('en')} className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors ${locale === 'en' ? 'bg-surface shadow-sm text-ink' : 'text-muted-foreground hover:text-ink'}`}>EN</button>
-              <button onClick={() => setLocale('hi')} className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors ${locale === 'hi' ? 'bg-surface shadow-sm text-ink' : 'text-muted-foreground hover:text-ink'}`}>HI</button>
+            <div className="hidden sm:flex items-center bg-paper border border-line rounded-md p-0.5" role="group" aria-label="Language">
+              <button type="button" onClick={() => setLocale('en')} className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors ${locale === 'en' ? 'bg-surface shadow-sm text-ink' : 'text-muted-foreground hover:text-ink'}`}>EN</button>
+              <button type="button" onClick={() => setLocale('hi')} className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors ${locale === 'hi' ? 'bg-surface shadow-sm text-ink' : 'text-muted-foreground hover:text-ink'}`}>HI</button>
             </div>
 
-            <button className="relative p-2 rounded-full hover:bg-muted/50 transition-colors">
+            <Link
+              href="/app"
+              className="relative p-2 rounded-full hover:bg-muted/50 transition-colors"
+              aria-label={hasAlerts ? `${failedBookings.length} alerts` : "Notifications"}
+              title={hasAlerts ? `${failedBookings.length} failed booking(s)` : "No new alerts"}
+            >
               <Bell className="h-4 w-4 text-ink" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-coral border-2 border-surface" />
-            </button>
+              {hasAlerts ? (
+                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-coral border-2 border-surface" />
+              ) : null}
+            </Link>
             
             <div className="h-8 w-8 rounded-full bg-gradient-to-br from-teal to-teal-dark flex items-center justify-center text-white text-xs font-semibold cursor-pointer">
               {userInitial}
@@ -241,14 +278,20 @@ export default function AgentLayout({
           
           if (link.isDrawer) {
             return (
-              <Drawer key={link.nameKey} swipeDirection="down">
-                <DrawerTrigger asChild>
-                  <button className="flex flex-col items-center justify-center w-full h-full space-y-0.5 text-muted-foreground hover:text-ink">
-                    <Icon className="h-5 w-5" />
-                    <span className="text-[10px] font-medium">{t(link.nameKey)}</span>
-                  </button>
+              <Drawer key={link.nameKey} swipeDirection="down" showSwipeHandle>
+                <DrawerTrigger
+                  render={
+                    <button
+                      type="button"
+                      className="flex flex-col items-center justify-center w-full h-full space-y-0.5 text-muted-foreground hover:text-ink"
+                      aria-label={t(link.nameKey)}
+                    />
+                  }
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="text-[10px] font-medium">{t(link.nameKey)}</span>
                 </DrawerTrigger>
-                <DrawerContent showSwipeHandle className="max-h-[85vh] rounded-t-2xl">
+                <DrawerContent className="max-h-[85vh] rounded-t-2xl">
                   <DrawerHeader className="border-b border-line pb-4 pt-2">
                     <DrawerTitle className="text-lg text-ink font-semibold">Menu</DrawerTitle>
                   </DrawerHeader>
@@ -261,16 +304,19 @@ export default function AgentLayout({
                             const SubIcon = subLink.icon;
                             const subActive = isActive(subLink.href);
                             return (
-                              <DrawerClose asChild key={subLink.nameKey}>
-                                <Link
-                                  href={subLink.href}
-                                  className={`flex items-center gap-3 px-3 py-3 rounded-xl font-medium transition-colors ${
-                                    subActive ? "bg-teal/10 text-teal" : "text-ink hover:bg-surface"
-                                  }`}
-                                >
-                                  <SubIcon className={`w-5 h-5 ${subActive ? "text-teal" : "text-muted-foreground"}`} />
-                                  {t(subLink.nameKey)}
-                                </Link>
+                              <DrawerClose
+                                key={subLink.nameKey}
+                                render={
+                                  <Link
+                                    href={subLink.href}
+                                    className={`flex items-center gap-3 px-3 py-3 rounded-xl font-medium transition-colors ${
+                                      subActive ? "bg-teal/10 text-teal" : "text-ink hover:bg-surface"
+                                    }`}
+                                  />
+                                }
+                              >
+                                <SubIcon className={`w-5 h-5 ${subActive ? "text-teal" : "text-muted-foreground"}`} />
+                                {t(subLink.nameKey)}
                               </DrawerClose>
                             );
                           })}
@@ -278,14 +324,16 @@ export default function AgentLayout({
                       </div>
                     ))}
                     <div className="py-2 mt-2 border-t border-line">
-                      <DrawerClose asChild>
-                        <Link
-                          href="/app/settings"
-                          className="flex items-center gap-3 px-3 py-3 rounded-xl font-medium text-ink hover:bg-surface"
-                        >
-                          <Settings className="w-5 h-5 text-muted-foreground" />
-                          {t("nav.settings")}
-                        </Link>
+                      <DrawerClose
+                        render={
+                          <Link
+                            href="/app/settings"
+                            className="flex items-center gap-3 px-3 py-3 rounded-xl font-medium text-ink hover:bg-surface"
+                          />
+                        }
+                      >
+                        <Settings className="w-5 h-5 text-muted-foreground" />
+                        {t("nav.settings")}
                       </DrawerClose>
                     </div>
                   </div>

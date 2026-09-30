@@ -47,7 +47,7 @@ export default function BrandingAdminPage() {
   const [updateOrg] = useUpdateOrgMutation();
 
   const [newDomain, setNewDomain] = useState("");
-  const [primaryColor, setPrimaryColor] = useState("#3A86FF");
+  const [primaryColor, setPrimaryColor] = useState("#0D9488");
   const [logoUrl, setLogoUrl] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -116,7 +116,7 @@ export default function BrandingAdminPage() {
                   value={primaryColor}
                   onChange={(e) => setPrimaryColor(e.target.value)}
                   className="flex-1 px-3 py-2 border border-line rounded-md text-ink"
-                  placeholder="#3A86FF"
+                  placeholder="#0D9488"
                 />
               </div>
             </div>

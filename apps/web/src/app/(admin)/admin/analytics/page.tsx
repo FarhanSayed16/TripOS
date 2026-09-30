@@ -211,7 +211,7 @@ export default function AdminAnalyticsPage() {
                     contentStyle={{ backgroundColor: "hsl(var(--paper))", borderColor: "hsl(var(--line))", borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}
                     itemStyle={{ color: "hsl(var(--ink))", fontSize: "14px", fontWeight: "600" }}
                     labelStyle={{ color: "hsl(var(--ink)/0.5)", fontSize: "12px", marginBottom: "4px" }}
-                    formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Revenue']}
+                    formatter={(value) => [`₹${Number(value ?? 0).toLocaleString()}`, "Revenue"]}
                   />
                   <Area 
                     type="monotone" 
