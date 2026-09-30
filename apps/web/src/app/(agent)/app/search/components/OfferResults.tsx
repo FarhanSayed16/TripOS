@@ -21,6 +21,7 @@ interface OfferResultsProps {
   } | null;
   fxNote?: string | null;
   lastQuery?: any;
+  onEditSearch?: () => void;
 }
 
 type SortKey = "recommended" | "price" | "duration" | "stops";
@@ -66,6 +67,7 @@ export function OfferResults({
   aggregation = null,
   fxNote = null,
   lastQuery = null,
+  onEditSearch,
 }: OfferResultsProps) {
   const { t } = useI18nOptional();
   const [visibleCount, setVisibleCount] = useState(20);
@@ -125,7 +127,16 @@ export function OfferResults({
             <span className="text-muted-foreground">&middot;</span>
             <span className="text-sm">{lastQuery.passengers?.adults || 1} pax</span>
           </div>
-          <Button variant="outline" size="sm" className="h-8">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8"
+            type="button"
+            onClick={() => {
+              onEditSearch?.();
+              document.getElementById("inventory-search-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          >
             Edit search
           </Button>
         </div>

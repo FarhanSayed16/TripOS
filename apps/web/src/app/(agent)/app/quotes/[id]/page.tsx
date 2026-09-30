@@ -216,10 +216,13 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             </Button>
           )}
 
-          {quote.status === "paid" && (
-            <Button className="gap-2 bg-mint hover:bg-mint/90 text-mint-foreground shadow-sm h-11 px-6">
+          {quote.status === "paid" && quote.booking?.id && (
+            <Button
+              render={<Link href={`/app/bookings`} />}
+              className="gap-2 bg-mint hover:bg-mint/90 text-white shadow-sm h-11 px-6"
+            >
               <FileCheck className="w-4 h-4" />
-              Send Tickets
+              View booking
             </Button>
           )}
 
@@ -269,7 +272,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
                       <td className="px-5 py-3 text-muted-foreground">{p.date_of_birth || '—'}</td>
                       <td className="px-5 py-3 text-muted-foreground">{p.passport_number || '—'}</td>
                       <td className="px-5 py-3 text-right font-mono text-xs text-muted-foreground">
-                        {quote.booking?.status === 'confirmed' ? `TKT-${Math.floor(Math.random() * 900000) + 100000}` : 'Pending'}
+                        {quote.booking?.supplier_pnr || (quote.booking?.status === "confirmed" ? "—" : "Pending")}
                       </td>
                     </tr>
                   ))}
@@ -414,7 +417,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                     <div>
                       <p className="font-semibold text-ink">{customer.first_name} {customer.last_name}</p>
-                      <p className="text-xs text-muted-foreground">Sahil Travels</p>
+                      <p className="text-xs text-muted-foreground">Customer</p>
                     </div>
                   </div>
                   <div className="pt-3 space-y-2 text-sm border-t border-line/60">
@@ -447,10 +450,12 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
                 <div className="flex justify-between text-muted-foreground">
                   <span>Supplier Cost</span>
                   <span className="font-mono">
-                    {formatPaiseAsMoney(
-                      quote.items.reduce((s, i) => s + (i.supplier_total ?? i.customer_total), 0),
-                      { currency: quote.charge_currency || "INR" }
-                    )}
+                    {(() => {
+                      const supplier = quote.items.reduce((s, i) => s + (i.supplier_cost ?? 0), 0);
+                      return supplier > 0
+                        ? formatPaiseAsMoney(supplier, { currency: quote.charge_currency || "INR" })
+                        : "—";
+                    })()}
                   </span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
@@ -499,9 +504,14 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
               </div>
               
               <div className="pt-2">
-                <Button variant="outline" className="w-full gap-2 border-dashed border-2 hover:bg-paper">
+                <Button
+                  variant="outline"
+                  disabled
+                  title="Invoice PDF is not available yet"
+                  className="w-full gap-2 border-dashed border-2"
+                >
                   <ExternalLink className="w-4 h-4 text-muted-foreground" />
-                  View Invoice PDF
+                  Invoice PDF (coming soon)
                 </Button>
               </div>
             </CardContent>
@@ -517,19 +527,19 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
                 <div>
                   <span className="stat-label">Inventory Mode</span>
                   <p className="font-medium text-ink mt-0.5 capitalize">
-                    {quote.items[0]?.offer_snapshot?.inventory_mode || "live"}
+                    {quote.items[0]?.offer?.inventory_mode || "—"}
                   </p>
                 </div>
                 <div>
                   <span className="stat-label">Fare Family</span>
                   <p className="font-medium text-ink mt-0.5">
-                    {quote.items[0]?.offer_snapshot?.fare_family || "—"}
+                    {quote.items[0]?.offer?.fare_family || "—"}
                   </p>
                 </div>
                 <div>
                   <span className="stat-label">Deal Code</span>
                   <p className="font-medium font-mono text-ink mt-0.5">
-                    {quote.items[0]?.offer_snapshot?.deal_code || "None"}
+                    {quote.items[0]?.offer?.deal_code || "None"}
                   </p>
                 </div>
                 <div>
@@ -539,9 +549,9 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
                   </p>
                 </div>
                 <div className="col-span-2">
-                  <span className="stat-label">Created By</span>
+                  <span className="stat-label">Created</span>
                   <p className="font-medium text-ink mt-0.5">
-                    {quote.created_by_email || quote.created_by || "Agent"}
+                    {format(new Date(quote.created_at), "MMM d, yyyy h:mm a")}
                   </p>
                 </div>
               </div>
@@ -556,7 +566,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             <CardContent className="p-5">
               <div className="relative pl-6 border-l-2 border-line/60 space-y-5">
                 <div className="relative">
-                  <span className="absolute -left-[29px] top-1.5 h-3 w-3 rounded-full border-2 border-white bg-blue-400 shadow-sm"></span>
+                  <span className="absolute -left-[29px] top-1.5 h-3 w-3 rounded-full border-2 border-white bg-teal shadow-sm"></span>
                   <p className="text-sm font-medium text-ink">Quote Created</p>
                   <p className="text-xs text-muted-foreground">{format(new Date(quote.created_at), "MMM d, h:mm a")}</p>
                 </div>
@@ -565,8 +575,8 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
                   let title = event.action;
                   if (title.startsWith("booking.failed") || title === "cancel.requested" || title === "payment_captured_quote_expired") color = "bg-coral";
                   if (title === "booking.confirmed") color = "bg-mint";
-                  if (title === "payment.captured") color = "bg-emerald-400";
-                  if (title === "quote.sent") color = "bg-amber-400";
+                  if (title === "payment.captured") color = "bg-mint";
+                  if (title === "quote.sent") color = "bg-amber";
 
                   return (
                     <div key={event.id} className="relative animate-in fade-in">
@@ -644,9 +654,12 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             </Button>
           )}
           {quote.status === "paid" && (
-            <Button className="gap-2 bg-mint hover:bg-mint/90 text-mint-foreground shadow-sm">
+            <Button
+              render={<Link href="/app/bookings" />}
+              className="gap-2 bg-mint hover:bg-mint/90 text-white shadow-sm"
+            >
               <FileCheck className="w-4 h-4" />
-              Tickets
+              Booking
             </Button>
           )}
         </div>

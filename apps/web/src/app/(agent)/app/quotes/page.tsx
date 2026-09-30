@@ -7,6 +7,7 @@ import { Plus, Search, FileText, Link as LinkIcon, Eye } from "lucide-react";
 
 import { useGetQuotesQuery } from "@/lib/api/quotesApi";
 import { useGetCustomersQuery } from "@/lib/api/crmApi";
+import { useGetMyOrganizationQuery } from "@/lib/api/orgApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/components/ui/toast";
 
 export default function QuotesPage() {
   const [statusFilter, setStatusFilter] = useState<string>("");
@@ -29,7 +31,33 @@ export default function QuotesPage() {
   );
   
   const { data: customersData } = useGetCustomersQuery({ limit: 50 });
+  const { data: org } = useGetMyOrganizationQuery();
 
+  const copyPublicLink = async (publicToken?: string) => {
+    if (!publicToken) {
+      toast.add({
+        type: "error",
+        title: "No public link yet",
+        description: "Mark the quote ready to generate a shareable link.",
+      });
+      return;
+    }
+    const url = `${window.location.origin}/q/${publicToken}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.add({
+        type: "success",
+        title: "Link copied",
+        description: url,
+      });
+    } catch {
+      toast.add({
+        type: "error",
+        title: "Could not copy",
+        description: url,
+      });
+    }
+  };
   const getStatusBadge = (status: string) => {
     const variant = ({
       draft: "draft",
@@ -179,7 +207,7 @@ export default function QuotesPage() {
                     <TableCell className="align-top py-4">
                       <div className="flex flex-col">
                         <span className="text-ink font-medium">{getCustomerName(quote.customer_id)}</span>
-                        <span className="text-[11px] text-muted-foreground mt-0.5">Sahil Travels</span>
+                        <span className="text-[11px] text-muted-foreground mt-0.5">{org?.brand_name || "Agency"}</span>
                       </div>
                     </TableCell>
                     <TableCell className="align-top py-4">
@@ -195,7 +223,7 @@ export default function QuotesPage() {
                     </TableCell>
                     <TableCell className="text-right align-middle py-4">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-ink hover:bg-surface" title="Copy Link" onClick={(e) => { e.preventDefault(); alert("Link copied!"); }}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-ink hover:bg-surface" title="Copy Link" onClick={(e) => { e.preventDefault(); e.stopPropagation(); void copyPublicLink(quote.public_token); }}>
                           <LinkIcon className="w-4 h-4" />
                         </Button>
                         <Link href={`/app/quotes/${quote.id}`}>

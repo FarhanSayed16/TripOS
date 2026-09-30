@@ -61,29 +61,20 @@ export function SelectedFlightRail({ offers }: { offers: NormalizedOffer[] }) {
             )}
           </div>
 
-          {/* Fare Breakdown */}
+          {/* Fare — honest total only (no invented base/tax split) */}
           <div className="bg-sand/40 rounded-lg p-3 mb-5 border border-line/50">
-            <div className="flex justify-between items-center text-sm mb-2">
-              <span className="text-muted-foreground">Base Fare</span>
-              <span className="font-mono text-ink">
-                {selected.currency} {(selected.total_amount * 0.8).toLocaleString()}
-              </span>
-            </div>
-            <div className="flex justify-between items-center text-sm mb-3">
-              <span className="text-muted-foreground">Taxes & Fees</span>
-              <span className="font-mono text-ink">
-                {selected.currency} {(selected.total_amount * 0.2).toLocaleString()}
-              </span>
-            </div>
-            <div className="flex justify-between items-center font-semibold border-t border-line/80 pt-2">
-              <span className="text-ink">Total</span>
+            <div className="flex justify-between items-center font-semibold">
+              <span className="text-ink">Offer total</span>
               <span className="text-lg font-mono text-ink">
                 {selected.currency} {selected.total_amount.toLocaleString()}
               </span>
             </div>
+            <p className="text-[11px] text-muted-foreground mt-2">
+              Includes taxes as returned by supplier. Separate base/tax lines appear when available.
+            </p>
           </div>
 
-          {/* Baggage & Policies */}
+          {/* Baggage */}
           <div className="space-y-2 mb-6">
             <div className="flex items-start gap-2 text-xs text-muted-foreground">
               <Briefcase className="w-3.5 h-3.5 text-teal shrink-0 mt-0.5" />
@@ -92,14 +83,18 @@ export function SelectedFlightRail({ offers }: { offers: NormalizedOffer[] }) {
                 {selected.baggage?.cabin_kg ? `${selected.baggage.cabin_kg}kg Cabin` : "No cabin bag"}
               </span>
             </div>
-            <div className="flex items-start gap-2 text-xs text-muted-foreground">
-              <Check className="w-3.5 h-3.5 text-teal shrink-0 mt-0.5" />
-              <span>Standard seat selection included</span>
-            </div>
-            <div className="flex items-start gap-2 text-xs text-muted-foreground">
-              <Info className="w-3.5 h-3.5 text-teal shrink-0 mt-0.5" />
-              <button className="text-teal hover:underline text-left">View full fare rules</button>
-            </div>
+            {selected.fare_family ? (
+              <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                <Check className="w-3.5 h-3.5 text-teal shrink-0 mt-0.5" />
+                <span>Fare family: {selected.fare_family}</span>
+              </div>
+            ) : null}
+            {selected.inventory_mode ? (
+              <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                <Info className="w-3.5 h-3.5 text-teal shrink-0 mt-0.5" />
+                <span className="capitalize">Inventory: {selected.inventory_mode}</span>
+              </div>
+            ) : null}
           </div>
 
           <Link href="/app/quotes/new" className="block">

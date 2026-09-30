@@ -140,15 +140,15 @@ export default function SearchPage() {
         </div>
       </div>
 
-      <div className="w-full mt-6">
+      <div id="inventory-search-form" className="w-full mt-6">
         <Tabs defaultValue="flights" className="w-full">
           <div className="flex mb-6">
-            <TabsList className="inline-flex h-12 items-center justify-center rounded-full bg-slate-100 p-1 text-slate-500">
-              <TabsTrigger value="flights" className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-8 py-2.5 text-sm font-semibold transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm gap-2">
+            <TabsList className="inline-flex h-12 items-center justify-center rounded-full bg-sand p-1 text-muted-foreground">
+              <TabsTrigger value="flights" className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-8 py-2.5 text-sm font-semibold transition-all data-[state=active]:bg-paper data-[state=active]:text-ink data-[state=active]:shadow-sm gap-2">
                 <Plane className="w-4 h-4" />
                 Flights
               </TabsTrigger>
-              <TabsTrigger value="hotels" className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-8 py-2.5 text-sm font-semibold transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm gap-2">
+              <TabsTrigger value="hotels" className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-8 py-2.5 text-sm font-semibold transition-all data-[state=active]:bg-paper data-[state=active]:text-ink data-[state=active]:shadow-sm gap-2">
                 <Building2 className="w-4 h-4" />
                 Hotels
               </TabsTrigger>
@@ -182,10 +182,35 @@ export default function SearchPage() {
               airlineFacets={airlineFacets}
               aggregation={aggregation}
               fxNote={fxNote}
+              onEditSearch={() => {
+                setOffers([]);
+                setSearchRequestId(null);
+                setLastQuery(null);
+              }}
             />
             <div className="hidden xl:block">
                <SelectedFlightRail offers={selectedOffers} />
             </div>
+            {selectedOffers.length > 0 && (
+              <div className="xl:hidden fixed bottom-20 left-0 right-0 z-40 px-4 pb-safe">
+                <div className="rounded-xl border border-line bg-paper/95 backdrop-blur shadow-lg p-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Selected</p>
+                    <p className="text-sm font-medium text-ink truncate">{selectedOffers[selectedOffers.length - 1]?.title}</p>
+                    <p className="font-mono text-sm text-teal">
+                      {selectedOffers[selectedOffers.length - 1]?.currency}{" "}
+                      {selectedOffers[selectedOffers.length - 1]?.total_amount?.toLocaleString()}
+                    </p>
+                  </div>
+                  <Link href="/app/quotes/new">
+                    <Button variant="gradient" size="sm" className="gap-1.5 shrink-0">
+                      <ShoppingCart className="w-3.5 h-3.5" />
+                      Quote
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

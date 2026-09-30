@@ -10,7 +10,7 @@ import { useGetCustomersQuery } from "@/lib/api/crmApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, CheckCircle2, ArrowRight, Plane, Building2, Trash2, Plus, Link as LinkIcon, Save, ChevronRight, Clock } from "lucide-react";
+import { Loader2, CheckCircle2, ArrowRight, Plane, Building2, Trash2, Plus, Link as LinkIcon, Save, ChevronRight, Clock, ShoppingCart } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -82,11 +82,10 @@ export default function QuoteBuilder() {
     }
   };
 
-  // Pricing calculations
-  const baseFare = offers.reduce((acc, o) => acc + (o.total_amount * 0.8), 0);
-  const taxes = offers.reduce((acc, o) => acc + (o.total_amount * 0.2), 0);
+  // Honest pricing: supplier totals only (no invented base/tax split)
+  const offerTotal = offers.reduce((acc, o) => acc + (o.total_amount || 0), 0);
   const totalMarkup = Object.values(markups).reduce((acc, val) => acc + (val || 0), 0);
-  const grandTotal = baseFare + taxes + totalMarkup;
+  const grandTotal = offerTotal + totalMarkup;
 
   if (offers.length === 0 && step === 1) {
     return (
@@ -246,13 +245,12 @@ export default function QuoteBuilder() {
               </CardHeader>
               <CardContent className="p-5 space-y-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Base Fare</span>
-                  <span className="font-mono text-ink">₹{baseFare.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                  <span className="text-muted-foreground">Offer total</span>
+                  <span className="font-mono text-ink">₹{offerTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Taxes & Fees</span>
-                  <span className="font-mono text-ink">₹{taxes.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                </div>
+                <p className="text-[11px] text-muted-foreground -mt-2">
+                  Supplier fare as returned — tax breakdown not available separately.
+                </p>
                 
                 <div className="pt-4 border-t border-line space-y-3">
                   <p className="text-xs font-semibold text-ink uppercase tracking-wider mb-2">Agent Markup</p>
