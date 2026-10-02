@@ -1,3 +1,4 @@
+import * as React from "react"
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
@@ -43,17 +44,40 @@ const buttonVariants = cva(
   }
 )
 
+function isNativeButtonElement(
+  render: React.ReactElement | undefined | null
+): boolean {
+  if (render == null) return true
+  if (!React.isValidElement(render)) return false
+  return typeof render.type === "string" && render.type === "button"
+}
+
 function Button({
   className,
   variant = "default",
   size = "default",
+  render,
+  nativeButton,
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+  // Only pass `render` when set — undefined still trips Base UI in some versions.
+  const composed =
+    render != null
+      ? {
+          render,
+          nativeButton:
+            nativeButton ?? (isNativeButtonElement(render as React.ReactElement) ? true : false),
+        }
+      : {
+          nativeButton: nativeButton ?? true,
+        }
+
   return (
     <ButtonPrimitive
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
+      {...composed}
     />
   )
 }

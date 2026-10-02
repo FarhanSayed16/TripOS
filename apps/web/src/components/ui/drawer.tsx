@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer"
 import { cn } from "cn"
+import { resolveNativeButton } from "@/lib/nativeButton"
 
 type DrawerContextProps = {
   hasSnapPoints: boolean
@@ -51,16 +52,44 @@ function Drawer({
   )
 }
 
-function DrawerTrigger({ ...props }: DrawerPrimitive.Trigger.Props) {
-  return <DrawerPrimitive.Trigger data-slot="drawer-trigger" {...props} />
+function DrawerTrigger({
+  render,
+  nativeButton,
+  ...props
+}: DrawerPrimitive.Trigger.Props) {
+  return (
+    <DrawerPrimitive.Trigger
+      data-slot="drawer-trigger"
+      render={render}
+      {...props}
+      nativeButton={resolveNativeButton(
+        render as React.ReactElement | undefined,
+        nativeButton
+      )}
+    />
+  )
 }
 
 function DrawerPortal({ ...props }: DrawerPrimitive.Portal.Props) {
   return <DrawerPrimitive.Portal data-slot="drawer-portal" {...props} />
 }
 
-function DrawerClose({ ...props }: DrawerPrimitive.Close.Props) {
-  return <DrawerPrimitive.Close data-slot="drawer-close" {...props} />
+function DrawerClose({
+  render,
+  nativeButton,
+  ...props
+}: DrawerPrimitive.Close.Props) {
+  return (
+    <DrawerPrimitive.Close
+      data-slot="drawer-close"
+      render={render}
+      {...props}
+      nativeButton={resolveNativeButton(
+        render as React.ReactElement | undefined,
+        nativeButton
+      )}
+    />
+  )
 }
 
 function DrawerOverlay({

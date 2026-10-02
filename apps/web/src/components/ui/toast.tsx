@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Toast as ToastPrimitive } from "@base-ui/react/toast"
 import { cn } from "cn"
+import { resolveNativeButton } from "@/lib/nativeButton"
 
 import { Button } from "@/components/ui/button"
 import { XIcon, CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
@@ -96,6 +97,7 @@ function ToastDescription({
 function ToastAction({
   className,
   render = <Button variant="outline" size="sm" />,
+  nativeButton,
   ...props
 }: ToastPrimitive.Action.Props) {
   return (
@@ -104,6 +106,10 @@ function ToastAction({
       render={render}
       className={cn("shrink-0", className)}
       {...props}
+      nativeButton={resolveNativeButton(
+        render as React.ReactElement | undefined,
+        nativeButton
+      )}
     />
   )
 }
@@ -112,6 +118,7 @@ function ToastClose({
   className,
   children,
   render = <Button variant="ghost" size="icon-sm" />,
+  nativeButton,
   ...props
 }: ToastPrimitive.Close.Props) {
   return (
@@ -124,6 +131,10 @@ function ToastClose({
         className
       )}
       {...props}
+      nativeButton={resolveNativeButton(
+        render as React.ReactElement | undefined,
+        nativeButton
+      )}
     >
       {children ?? (
         <XIcon aria-hidden="true" />
