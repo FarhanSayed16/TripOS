@@ -12,7 +12,8 @@ import { RootState } from "@/lib/store";
 import { setLastSearchRequestId } from "@/lib/quoteSlice";
 import { SelectedFlightRail } from "./components/SelectedFlightRail";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "cn";
 
 export default function SearchPage() {
   const dispatch = useDispatch();
@@ -140,22 +141,25 @@ export default function SearchPage() {
         </div>
       </div>
 
-      <div id="inventory-search-form" className="w-full mt-6">
+      <div id="inventory-search-form" className="w-full mt-2 relative rounded-2xl bg-surface border border-line p-6 md:p-8 shadow-sm">
+        {/* Decorative accent line at top */}
+        <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-teal via-mint to-teal rounded-t-2xl" />
+        
         <Tabs defaultValue="flights" className="w-full">
-          <div className="flex mb-6">
-            <TabsList className="inline-flex h-12 items-center justify-center rounded-full bg-sand p-1 text-muted-foreground">
-              <TabsTrigger value="flights" className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-8 py-2.5 text-sm font-semibold transition-all data-[state=active]:bg-paper data-[state=active]:text-ink data-[state=active]:shadow-sm gap-2">
+          <div className="flex justify-center mb-8">
+            <TabsList className="inline-flex h-12 items-center justify-center rounded-xl bg-paper p-1 border border-line text-muted-foreground">
+              <TabsTrigger value="flights" className="inline-flex items-center justify-center whitespace-nowrap rounded-lg px-6 py-2.5 text-sm font-semibold transition-all data-active:bg-surface data-active:text-ink data-active:shadow-sm gap-2">
                 <Plane className="w-4 h-4" />
                 Flights
               </TabsTrigger>
-              <TabsTrigger value="hotels" className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-8 py-2.5 text-sm font-semibold transition-all data-[state=active]:bg-paper data-[state=active]:text-ink data-[state=active]:shadow-sm gap-2">
+              <TabsTrigger value="hotels" className="inline-flex items-center justify-center whitespace-nowrap rounded-lg px-6 py-2.5 text-sm font-semibold transition-all data-active:bg-surface data-active:text-ink data-active:shadow-sm gap-2">
                 <Building2 className="w-4 h-4" />
                 Hotels
               </TabsTrigger>
             </TabsList>
           </div>
           
-          <div className="w-full relative z-10">
+          <div className="w-full">
             <TabsContent value="flights" className="m-0 focus-visible:outline-none">
               <FlightSearchForm onSearch={handleFlightSearch} isLoading={isFlightsLoading} />
               {renderError(flightError)}
@@ -202,11 +206,15 @@ export default function SearchPage() {
                       {selectedOffers[selectedOffers.length - 1]?.total_amount?.toLocaleString()}
                     </p>
                   </div>
-                  <Link href="/app/quotes/new">
-                    <Button variant="gradient" size="sm" className="gap-1.5 shrink-0">
-                      <ShoppingCart className="w-3.5 h-3.5" />
-                      Quote
-                    </Button>
+                  <Link
+                    href="/app/quotes/new"
+                    className={cn(
+                      buttonVariants({ variant: "gradient", size: "sm" }),
+                      "gap-1.5 shrink-0"
+                    )}
+                  >
+                    <ShoppingCart className="w-3.5 h-3.5" />
+                    Quote
                   </Link>
                 </div>
               </div>

@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, MessageCircle, Copy, Check, ExternalLink, Loader2, Send } from "lucide-react";
 
 import { useGetWhatsappPreviewQuery, useSendQuoteMutation } from "@/lib/api/quotesApi";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "cn";
 
 export default function SendQuotePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -96,11 +97,17 @@ export default function SendQuotePage({ params }: { params: Promise<{ id: string
           <div className="bg-sand/30 p-4 rounded-lg border border-line space-y-4">
             <p className="text-sm font-medium">1. Send the message</p>
             <div className="flex gap-2">
-              <a href={waMeLink} target="_blank" rel="noopener noreferrer" className="flex-1">
-                <Button className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white gap-2">
-                  <ExternalLink className="w-4 h-4" />
-                  Open WhatsApp
-                </Button>
+              <a
+                href={waMeLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  buttonVariants(),
+                  "flex-1 w-full bg-[#25D366] hover:bg-[#128C7E] text-white gap-2"
+                )}
+              >
+                <ExternalLink className="w-4 h-4" />
+                Open WhatsApp
               </a>
               <Button variant="outline" onClick={handleCopy} className="gap-2 shrink-0">
                 {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}

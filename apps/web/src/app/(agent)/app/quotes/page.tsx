@@ -8,7 +8,7 @@ import { Plus, Search, FileText, Link as LinkIcon, Eye } from "lucide-react";
 import { useGetQuotesQuery } from "@/lib/api/quotesApi";
 import { useGetCustomersQuery } from "@/lib/api/crmApi";
 import { useGetMyOrganizationQuery } from "@/lib/api/orgApi";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toast";
+import { cn } from "cn";
 
 export default function QuotesPage() {
   const [statusFilter, setStatusFilter] = useState<string>("");
@@ -106,11 +107,15 @@ export default function QuotesPage() {
           <h1 className="page-title text-2xl tracking-tight">Active Quotes</h1>
           <p className="page-subtitle mt-1">Manage and track all customer quotes.</p>
         </div>
-        <Link href="/app/search">
-          <Button className="rounded-lg px-6 h-11 bg-teal hover:bg-teal-dark text-white font-medium transition-all shadow-sm gap-2">
-            <Plus className="w-4 h-4" />
-            New Quote
-          </Button>
+        <Link
+          href="/app/search"
+          className={cn(
+            buttonVariants({ variant: "default" }),
+            "rounded-lg px-6 h-11 bg-teal hover:bg-teal-dark text-white font-medium transition-all shadow-sm gap-2"
+          )}
+        >
+          <Plus className="w-4 h-4" />
+          New Quote
         </Link>
       </div>
 
@@ -183,8 +188,11 @@ export default function QuotesPage() {
                       {searchQuery || statusFilter ? "Try adjusting your filters or search." : "You haven't created any quotes yet."}
                     </p>
                     {(!searchQuery && !statusFilter) && (
-                      <Link href="/app/search">
-                        <Button className="rounded-lg px-6 bg-teal hover:bg-teal-dark">Build your first quote</Button>
+                      <Link
+                        href="/app/search"
+                        className={cn(buttonVariants(), "rounded-lg px-6 bg-teal hover:bg-teal-dark")}
+                      >
+                        Build your first quote
                       </Link>
                     )}
                   </div>
@@ -226,10 +234,15 @@ export default function QuotesPage() {
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-ink hover:bg-surface" title="Copy Link" onClick={(e) => { e.preventDefault(); e.stopPropagation(); void copyPublicLink(quote.public_token); }}>
                           <LinkIcon className="w-4 h-4" />
                         </Button>
-                        <Link href={`/app/quotes/${quote.id}`}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-teal hover:text-teal-dark hover:bg-teal/10" title="View Quote">
-                            <Eye className="w-4 h-4" />
-                          </Button>
+                        <Link
+                          href={`/app/quotes/${quote.id}`}
+                          className={cn(
+                            buttonVariants({ variant: "ghost", size: "icon" }),
+                            "h-8 w-8 text-teal hover:text-teal-dark hover:bg-teal/10"
+                          )}
+                          title="View Quote"
+                        >
+                          <Eye className="w-4 h-4" />
                         </Link>
                       </div>
                     </TableCell>

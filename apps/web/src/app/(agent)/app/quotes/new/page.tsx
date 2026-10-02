@@ -7,7 +7,7 @@ import { RootState } from "@/lib/store";
 import { clearOffers } from "@/lib/quoteSlice";
 import { useCreateQuoteMutation, useUpdatePassengersMutation, useMarkQuoteReadyMutation } from "@/lib/api/quotesApi";
 import { useGetCustomersQuery } from "@/lib/api/crmApi";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, CheckCircle2, ArrowRight, Plane, Building2, Trash2, Plus, Link as LinkIcon, Save, ChevronRight, Clock, ShoppingCart } from "lucide-react";
@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Link from "next/link";
+import { cn } from "cn";
 
 export default function QuoteBuilder() {
   const router = useRouter();
@@ -174,15 +175,23 @@ export default function QuoteBuilder() {
 
             {/* Add More Actions */}
             <div className="flex gap-3 pt-4">
-              <Link href="/app/search">
-                <Button variant="outline" className="border-dashed border-2 text-teal hover:text-teal-dark hover:bg-teal/5 bg-transparent h-12 px-6">
-                  <Plus className="w-4 h-4 mr-2" /> Add Flight
-                </Button>
+              <Link
+                href="/app/search"
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "border-dashed border-2 text-teal hover:text-teal-dark hover:bg-teal/5 bg-transparent h-12 px-6"
+                )}
+              >
+                <Plus className="w-4 h-4 mr-2" /> Add Flight
               </Link>
-              <Link href="/app/search">
-                <Button variant="outline" className="border-dashed border-2 text-teal hover:text-teal-dark hover:bg-teal/5 bg-transparent h-12 px-6">
-                  <Plus className="w-4 h-4 mr-2" /> Add Hotel
-                </Button>
+              <Link
+                href="/app/search"
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "border-dashed border-2 text-teal hover:text-teal-dark hover:bg-teal/5 bg-transparent h-12 px-6"
+                )}
+              >
+                <Plus className="w-4 h-4 mr-2" /> Add Hotel
               </Link>
             </div>
           </div>

@@ -25,6 +25,7 @@ import { useI18n } from "@/lib/i18n";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger, DrawerClose } from "@/components/ui/drawer";
 import { useGetMyOrganizationQuery } from "@/lib/api/orgApi";
 import { useGetBookingsQuery } from "@/lib/api/bookingsApi";
+import { NotificationPanel } from "@/components/NotificationPanel";
 
 export default function AgentLayout({
   children,
@@ -202,7 +203,7 @@ export default function AgentLayout({
               <div className="text-[11px] text-muted-foreground truncate">{agencyName}</div>
             </div>
             <button
-              onClick={logout}
+              onClick={() => logout()}
               className="text-[11px] text-muted-foreground hover:text-coral transition-colors flex-shrink-0"
               title={t("nav.logout")}
             >
@@ -248,17 +249,7 @@ export default function AgentLayout({
               <button type="button" onClick={() => setLocale('hi')} className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors ${locale === 'hi' ? 'bg-surface shadow-sm text-ink' : 'text-muted-foreground hover:text-ink'}`}>HI</button>
             </div>
 
-            <Link
-              href="/app"
-              className="relative p-2 rounded-full hover:bg-muted/50 transition-colors"
-              aria-label={hasAlerts ? `${failedBookings.length} alerts` : "Notifications"}
-              title={hasAlerts ? `${failedBookings.length} failed booking(s)` : "No new alerts"}
-            >
-              <Bell className="h-4 w-4 text-ink" />
-              {hasAlerts ? (
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-coral border-2 border-surface" />
-              ) : null}
-            </Link>
+            <NotificationPanel />
             
             <div className="h-8 w-8 rounded-full bg-gradient-to-br from-teal to-teal-dark flex items-center justify-center text-white text-xs font-semibold cursor-pointer">
               {userInitial}

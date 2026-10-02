@@ -256,6 +256,24 @@ async def mark_quote_paid_offline(quote_id: str, current_user: User, db: AsyncSe
         },
     )
 
+    try:
+        from app.services.notifications import create_notification
+        amount_display = f"₹{quote.total_charge_paise / 100:,.0f}" if quote.total_charge_paise else ""
+        await create_notification(
+            db,
+            organization_id=quote.organization_id,
+            type="payment_received",
+            title=f"Payment received {amount_display}".strip(),
+            body=f"Quote {str(quote.id)[:8]} is now paid. Booking confirmation in progress.",
+            icon="credit-card",
+            severity="success",
+            link=f"/app/quotes/{quote.id}",
+            metadata={"quote_id": str(quote.id)},
+        )
+    except Exception as e:
+        import structlog
+        structlog.get_logger().warning("notification_create_failed", error=str(e))
+
     db.add(
         JobOutbox(
             type="booking_confirm",

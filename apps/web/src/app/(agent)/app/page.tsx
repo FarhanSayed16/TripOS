@@ -20,11 +20,13 @@ import { useGetBookingsQuery } from "@/lib/api/bookingsApi";
 import { useGetQuotesQuery } from "@/lib/api/quotesApi";
 import { useGetCustomersQuery } from "@/lib/api/crmApi";
 import { useGetWalletSummaryQuery } from "@/lib/api/walletApi";
-import { useAuth } from "@/contexts/AuthContext";
+import { useGetNotificationsQuery } from "@/lib/api/notificationsApi";
+
 import { StaggerContainer } from "@/components/PageTransition";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "cn";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useMemo, useState } from "react";
@@ -32,7 +34,7 @@ import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+
   const router = useRouter();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -81,29 +83,14 @@ export default function DashboardPage() {
       .slice(0, 5);
   }, [allBookings]);
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  const firstName = user?.email?.split("@")[0] || "there";
-  const todayDate = new Date().toLocaleDateString("en-US", { weekday: 'long', month: 'long', day: 'numeric' });
+
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-8">
       {/* ── Main Content ── */}
       <div className="space-y-8 min-w-0">
         
-        {/* 1. Greeting Block */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-          <div>
-            <h1 className="page-title">{greeting}, {firstName}</h1>
-            <p className="page-subtitle mt-1">
-              {todayDate} &middot; Here's your attention desk.
-            </p>
-          </div>
-          <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-mint bg-mint/10 px-3 py-1.5 rounded-full border border-mint/20 whitespace-nowrap">
-            <div className="h-2 w-2 rounded-full bg-mint animate-pulse" />
-            All systems operational
-          </div>
-        </div>
+
 
         {/* 2. Attention Alerts */}
         {!loading && attentionCount > 0 ? (
@@ -303,14 +290,12 @@ export default function DashboardPage() {
                       {format(new Date(booking.created_at), "MMM d")}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-teal"
-                        render={<Link href={`/app/quotes/${booking.quote_id}`} />}
+                      <Link 
+                        href={`/app/quotes/${booking.quote_id}`}
+                        className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "text-teal")}
                       >
                         Open quote
-                      </Button>
+                      </Link>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -334,13 +319,15 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-3xl font-bold font-mono text-ink tracking-tight mb-4">{walletBalance}</div>
             <div className="flex gap-2">
-              <Button
-                variant="default"
-                className="w-full bg-ink text-white hover:bg-ink/90"
-                render={<Link href="/app/wallet" />}
+              <Link
+                href="/app/wallet"
+                className={cn(
+                  buttonVariants({ variant: "default" }),
+                  "w-full bg-ink text-white hover:bg-ink/90 inline-flex items-center justify-center"
+                )}
               >
                 Add money
-              </Button>
+              </Link>
             </div>
             <div className="mt-4 pt-4 border-t border-line">
               <div className="flex justify-between text-sm">
@@ -352,42 +339,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Notifications */}
-        <Card className="card-elevated border-none shadow-sm">
-          <CardHeader className="pb-3 border-b border-line mb-3">
-            <CardTitle className="text-sm font-medium text-ink flex items-center gap-2">
-              <Bell className="w-4 h-4" /> Notifications
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {failed.length > 0 && (
-              <div className="flex gap-3 items-start">
-                <div className="h-2 w-2 rounded-full bg-coral mt-1.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm text-ink leading-tight">{failed.length} booking{failed.length !== 1 ? "s" : ""} failed — check Bookings ledger.</p>
-                  <span className="text-xs text-muted-foreground">Recent</span>
-                </div>
-              </div>
-            )}
-            {awaitingConfirm.length > 0 && (
-              <div className="flex gap-3 items-start">
-                <div className="h-2 w-2 rounded-full bg-amber-400 mt-1.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm text-ink leading-tight">{awaitingConfirm.length} quote{awaitingConfirm.length !== 1 ? "s" : ""} paid, awaiting confirmation.</p>
-                  <span className="text-xs text-muted-foreground">Recent</span>
-                </div>
-              </div>
-            )}
-            {failed.length === 0 && awaitingConfirm.length === 0 && (
-              <div className="flex gap-3 items-start">
-                <div className="h-2 w-2 rounded-full bg-mint mt-1.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm text-ink leading-tight">All caught up — no pending actions.</p>
-                  <span className="text-xs text-muted-foreground">Now</span>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <DashboardNotifications />
 
         {/* AI Promo */}
         <div className="rounded-xl bg-gradient-to-br from-ink to-teal-dark p-6 text-white relative overflow-hidden shadow-md group cursor-pointer hover:shadow-lg transition-all">
@@ -402,5 +354,61 @@ export default function DashboardPage() {
 
       </div>
     </div>
+  );
+}
+
+const severityDot: Record<string, string> = {
+  error: "bg-coral",
+  warning: "bg-amber-400",
+  success: "bg-mint",
+  info: "bg-teal",
+};
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function DashboardNotifications() {
+  const { data: notifications = [], isLoading } = useGetNotificationsQuery({ limit: 5 });
+
+  return (
+    <Card className="card-elevated border-none shadow-sm">
+      <CardHeader className="pb-3 border-b border-line mb-3">
+        <CardTitle className="text-sm font-medium text-ink flex items-center gap-2">
+          <Bell className="w-4 h-4" /> Notifications
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        ) : notifications.length === 0 ? (
+          <div className="flex gap-3 items-start">
+            <div className="h-2 w-2 rounded-full bg-mint mt-1.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm text-ink leading-tight">All caught up — no pending actions.</p>
+              <span className="text-xs text-muted-foreground">Now</span>
+            </div>
+          </div>
+        ) : (
+          notifications.map((n) => (
+            <div key={n.id} className="flex gap-3 items-start">
+              <div className={`h-2 w-2 rounded-full mt-1.5 flex-shrink-0 ${severityDot[n.severity] || severityDot.info}`} />
+              <div>
+                <p className={`text-sm leading-tight ${n.is_read ? "text-muted-foreground" : "text-ink font-medium"}`}>
+                  {n.title}
+                </p>
+                <span className="text-xs text-muted-foreground">{timeAgo(n.created_at)}</span>
+              </div>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
   );
 }

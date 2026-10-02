@@ -9,7 +9,8 @@ import { useRouter } from "next/navigation";
 import { useGetQuoteQuery, useGeneratePaymentLinkMutation, useCancelQuoteMutation, useGetQuoteAuditEventsQuery, useRefreshQuoteMutation, useGetQuoteFareRulesQuery, useGetQuoteRefundsQuery } from "@/lib/api/quotesApi";
 import { useGetCustomersQuery } from "@/lib/api/crmApi";
 import { useGetBookingDocumentsQuery, useUploadDocumentMutation, useDeleteDocumentMutation } from "@/lib/api/documentsApi";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "cn";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -217,13 +218,13 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
           )}
 
           {quote.status === "paid" && quote.booking?.id && (
-            <Button
-              render={<Link href={`/app/bookings`} />}
-              className="gap-2 bg-mint hover:bg-mint/90 text-white shadow-sm h-11 px-6"
+            <Link
+              href={`/app/bookings`}
+              className={cn(buttonVariants({ variant: "default" }), "gap-2 bg-mint hover:bg-mint/90 text-white shadow-sm h-11 px-6")}
             >
               <FileCheck className="w-4 h-4" />
               View booking
-            </Button>
+            </Link>
           )}
 
           {quote.status === "ready" && (
@@ -232,11 +233,15 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
                 {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                 {copied ? "Copied" : "Copy Link"}
               </Button>
-              <Link href={`/app/quotes/${quote.id}/send`}>
-                <Button className="bg-[#25D366] hover:bg-[#128C7E] text-white gap-2 h-11">
-                  <MessageCircle className="w-4 h-4" />
-                  WhatsApp
-                </Button>
+              <Link
+                href={`/app/quotes/${quote.id}/send`}
+                className={cn(
+                  buttonVariants(),
+                  "bg-[#25D366] hover:bg-[#128C7E] text-white gap-2 h-11"
+                )}
+              >
+                <MessageCircle className="w-4 h-4" />
+                WhatsApp
               </Link>
             </div>
           )}
@@ -654,13 +659,13 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             </Button>
           )}
           {quote.status === "paid" && (
-            <Button
-              render={<Link href="/app/bookings" />}
-              className="gap-2 bg-mint hover:bg-mint/90 text-white shadow-sm"
+            <Link
+              href="/app/bookings"
+              className={cn(buttonVariants({ variant: "default" }), "gap-2 bg-mint hover:bg-mint/90 text-white shadow-sm")}
             >
               <FileCheck className="w-4 h-4" />
               Booking
-            </Button>
+            </Link>
           )}
         </div>
       </div>

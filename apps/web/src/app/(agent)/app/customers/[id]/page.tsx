@@ -4,10 +4,11 @@ import { use } from "react";
 import Link from "next/link";
 import { useGetCustomerQuery, useGetCustomerTimelineQuery } from "@/lib/api/crmApi";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { ArrowLeft, Mail, Phone, Calendar, Clock, Loader2, StickyNote, MessageCircle, ArrowRight, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "cn";
 
 function waMeUrl(phoneE164: string): string {
   const digits = phoneE164.replace(/\D/g, "");
@@ -43,10 +44,14 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10">
       <div className="flex items-center gap-4 mb-6">
-        <Link href="/app/customers">
-          <Button variant="outline" size="icon" className="w-9 h-9 rounded-full bg-paper shadow-sm">
-            <ArrowLeft className="w-4 h-4 text-muted-foreground" />
-          </Button>
+        <Link
+          href="/app/customers"
+          className={cn(
+            buttonVariants({ variant: "outline", size: "icon" }),
+            "w-9 h-9 rounded-full bg-paper shadow-sm"
+          )}
+        >
+          <ArrowLeft className="w-4 h-4 text-muted-foreground" />
         </Link>
         <div>
           <div className="flex items-center gap-3">
