@@ -113,8 +113,8 @@ export default function StyleguidePage() {
           <h2 className="text-xl font-semibold border-b pb-2">Overlays (Modals & Toasts)</h2>
           <div className="flex gap-4 items-center">
             <Dialog>
-              <DialogTrigger>
-                <Button variant="outline">Open Modal</Button>
+              <DialogTrigger render={<Button variant="outline" />}>
+                Open Modal
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>

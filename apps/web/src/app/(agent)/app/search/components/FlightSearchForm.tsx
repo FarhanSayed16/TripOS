@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SearchQuery } from "@/lib/api/inventoryApi";
-import { Plane, Calendar, Users, Loader2 } from "lucide-react";
+import { Plane, ArrowLeftRight, Calendar, Users, Tag, Loader2, Search } from "lucide-react";
 
 interface FlightSearchFormProps {
   onSearch: (query: SearchQuery) => void;
@@ -32,94 +31,120 @@ export function FlightSearchForm({ onSearch, isLoading }: FlightSearchFormProps)
     });
   };
 
+  const swapCities = () => {
+    setOrigin(destination);
+    setDestination(origin);
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col md:flex-row items-center bg-paper rounded-2xl md:rounded-full border border-line p-2 shadow-lg max-w-5xl mx-auto">
-      <div className="flex-1 flex flex-col px-6 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl md:rounded-full transition-colors cursor-pointer group">
-        <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
-          <Plane className="w-3.5 h-3.5" /> Origin
-        </label>
-        <input 
-          value={origin} 
-          onChange={(e) => setOrigin(e.target.value.toUpperCase())}
-          maxLength={3}
-          placeholder="DEL"
-          required
-          className="bg-transparent border-none p-0 focus:ring-0 text-sm font-medium text-ink placeholder:text-muted-foreground uppercase focus-visible:outline-none"
-        />
-      </div>
-      
-      <div className="hidden md:block w-px h-10 bg-line/50 mx-1" />
-      
-      <div className="flex-1 flex flex-col px-6 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl md:rounded-full transition-colors cursor-pointer group">
-        <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
-          <Plane className="w-3.5 h-3.5" /> Destination
-        </label>
-        <input 
-          value={destination} 
-          onChange={(e) => setDestination(e.target.value.toUpperCase())}
-          maxLength={3}
-          placeholder="BOM"
-          required
-          className="bg-transparent border-none p-0 focus:ring-0 text-sm font-medium text-ink placeholder:text-muted-foreground uppercase focus-visible:outline-none"
-        />
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Row 1: Origin / Destination */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative">
+        {/* Origin */}
+        <div className="group rounded-xl border border-line bg-surface/60 hover:border-teal/40 transition-colors p-4 focus-within:border-teal focus-within:ring-2 focus-within:ring-teal/10">
+          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1.5">
+            <Plane className="w-3.5 h-3.5 text-teal" /> From
+          </label>
+          <input
+            value={origin}
+            onChange={(e) => setOrigin(e.target.value.toUpperCase())}
+            maxLength={3}
+            placeholder="DEL"
+            required
+            className="w-full bg-transparent border-none p-0 focus:ring-0 text-2xl font-bold text-ink placeholder:text-muted-foreground/30 uppercase focus-visible:outline-none tracking-wider"
+          />
+          <span className="text-xs text-muted-foreground mt-1 block">Airport code</span>
+        </div>
 
-      <div className="hidden md:block w-px h-10 bg-line/50 mx-1" />
+        {/* Swap button */}
+        <button
+          type="button"
+          onClick={swapCities}
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 hidden md:flex h-10 w-10 rounded-full bg-paper border-2 border-line items-center justify-center hover:border-teal hover:bg-teal/5 transition-all shadow-sm"
+          aria-label="Swap origin and destination"
+        >
+          <ArrowLeftRight className="w-4 h-4 text-ink/60" />
+        </button>
 
-      <div className="flex-1 flex flex-col px-6 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl md:rounded-full transition-colors cursor-pointer group">
-        <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
-          <Calendar className="w-3.5 h-3.5" /> Departure
-        </label>
-        <input 
-          type="date"
-          value={departureDate} 
-          onChange={(e) => setDepartureDate(e.target.value)}
-          required
-          className="bg-transparent border-none p-0 focus:ring-0 text-sm font-medium text-ink focus-visible:outline-none"
-        />
-      </div>
-
-      <div className="hidden md:block w-px h-10 bg-line/50 mx-1" />
-
-      <div className="flex-1 flex flex-col px-6 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl md:rounded-full transition-colors cursor-pointer group">
-        <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
-          <Users className="w-3.5 h-3.5" /> Passengers
-        </label>
-        <input 
-          type="number"
-          min={1}
-          max={9}
-          value={adults} 
-          onChange={(e) => setAdults(parseInt(e.target.value))}
-          required
-          className="bg-transparent border-none p-0 focus:ring-0 text-sm font-medium text-ink focus-visible:outline-none"
-        />
+        {/* Destination */}
+        <div className="group rounded-xl border border-line bg-surface/60 hover:border-teal/40 transition-colors p-4 focus-within:border-teal focus-within:ring-2 focus-within:ring-teal/10">
+          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1.5">
+            <Plane className="w-3.5 h-3.5 text-teal" /> To
+          </label>
+          <input
+            value={destination}
+            onChange={(e) => setDestination(e.target.value.toUpperCase())}
+            maxLength={3}
+            placeholder="BOM"
+            required
+            className="w-full bg-transparent border-none p-0 focus:ring-0 text-2xl font-bold text-ink placeholder:text-muted-foreground/30 uppercase focus-visible:outline-none tracking-wider"
+          />
+          <span className="text-xs text-muted-foreground mt-1 block">Airport code</span>
+        </div>
       </div>
 
-      <div className="hidden md:block w-px h-10 bg-line/50 mx-1" />
+      {/* Row 2: Date / Passengers / Deal Code */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Departure */}
+        <div className="group rounded-xl border border-line bg-surface/60 hover:border-teal/40 transition-colors p-4 focus-within:border-teal focus-within:ring-2 focus-within:ring-teal/10">
+          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5 text-teal" /> Departure
+          </label>
+          <input
+            type="date"
+            value={departureDate}
+            onChange={(e) => setDepartureDate(e.target.value)}
+            required
+            className="w-full bg-transparent border-none p-0 focus:ring-0 text-base font-semibold text-ink focus-visible:outline-none"
+          />
+        </div>
 
-      <div className="flex-1 flex flex-col px-6 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl md:rounded-full transition-colors cursor-pointer group">
-        <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
-          Deal code
-        </label>
-        <input
-          value={dealCode}
-          onChange={(e) => setDealCode(e.target.value.toUpperCase())}
-          placeholder="XYZ123"
-          maxLength={32}
-          className="bg-transparent border-none p-0 focus:ring-0 text-sm font-medium text-ink placeholder:text-muted-foreground uppercase focus-visible:outline-none"
-        />
+        {/* Passengers */}
+        <div className="group rounded-xl border border-line bg-surface/60 hover:border-teal/40 transition-colors p-4 focus-within:border-teal focus-within:ring-2 focus-within:ring-teal/10">
+          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1.5">
+            <Users className="w-3.5 h-3.5 text-teal" /> Passengers
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={9}
+            value={adults}
+            onChange={(e) => setAdults(parseInt(e.target.value))}
+            required
+            className="w-full bg-transparent border-none p-0 focus:ring-0 text-base font-semibold text-ink focus-visible:outline-none"
+          />
+        </div>
+
+        {/* Deal Code */}
+        <div className="group rounded-xl border border-line bg-surface/60 hover:border-teal/40 transition-colors p-4 focus-within:border-teal focus-within:ring-2 focus-within:ring-teal/10">
+          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1.5">
+            <Tag className="w-3.5 h-3.5 text-teal" /> Deal Code
+          </label>
+          <input
+            value={dealCode}
+            onChange={(e) => setDealCode(e.target.value.toUpperCase())}
+            placeholder="Optional"
+            maxLength={32}
+            className="w-full bg-transparent border-none p-0 focus:ring-0 text-base font-semibold text-ink placeholder:text-muted-foreground/30 uppercase focus-visible:outline-none"
+          />
+        </div>
       </div>
 
-      <div className="ml-2 pr-2 md:pr-0 mt-4 md:mt-0 w-full md:w-auto">
-        <Button type="submit" disabled={isLoading} className="w-full rounded-full px-8 h-12 bg-teal hover:bg-teal-dark text-white font-medium transition-all shadow-sm hover:shadow-md active:scale-95">
-          {isLoading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            "Search Flights"
-          )}
-        </Button>
-      </div>
+      {/* Row 3: Submit */}
+      <Button
+        type="submit"
+        disabled={isLoading}
+        className="w-full h-13 rounded-xl bg-gradient-to-r from-teal to-teal-dark hover:from-teal-dark hover:to-teal text-white font-semibold text-[15px] transition-all shadow-md hover:shadow-lg hover:-translate-y-[1px] active:scale-[0.99] gap-2.5"
+      >
+        {isLoading ? (
+          <Loader2 className="w-5 h-5 animate-spin" />
+        ) : (
+          <>
+            <Search className="w-4.5 h-4.5" />
+            Search Flights
+          </>
+        )}
+      </Button>
     </form>
   );
 }

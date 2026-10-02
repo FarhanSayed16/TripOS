@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SearchQuery } from "@/lib/api/inventoryApi";
-import { Building2, Calendar, Users, Loader2 } from "lucide-react";
+import { Building2, Calendar, Users, Loader2, Search } from "lucide-react";
 
 interface HotelSearchFormProps {
   onSearch: (query: SearchQuery) => void;
@@ -30,62 +29,71 @@ export function HotelSearchForm({ onSearch, isLoading }: HotelSearchFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col md:flex-row items-center bg-paper rounded-2xl md:rounded-full border border-line p-2 shadow-lg max-w-5xl mx-auto">
-      <div className="flex-1 flex flex-col px-6 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl md:rounded-full transition-colors cursor-pointer group">
-        <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
-          <Building2 className="w-3.5 h-3.5" /> Destination
-        </label>
-        <input 
-          value={destination} 
-          onChange={(e) => setDestination(e.target.value.toUpperCase())}
-          maxLength={3}
-          placeholder="GOI"
-          required
-          className="bg-transparent border-none p-0 focus:ring-0 text-sm font-medium text-ink placeholder:text-muted-foreground uppercase focus-visible:outline-none"
-        />
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Row 1: Destination / Check-In / Guests */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Destination */}
+        <div className="group rounded-xl border border-line bg-surface/60 hover:border-teal/40 transition-colors p-4 focus-within:border-teal focus-within:ring-2 focus-within:ring-teal/10">
+          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1.5">
+            <Building2 className="w-3.5 h-3.5 text-teal" /> Destination
+          </label>
+          <input
+            value={destination}
+            onChange={(e) => setDestination(e.target.value.toUpperCase())}
+            maxLength={3}
+            placeholder="GOI"
+            required
+            className="w-full bg-transparent border-none p-0 focus:ring-0 text-2xl font-bold text-ink placeholder:text-muted-foreground/30 uppercase focus-visible:outline-none tracking-wider"
+          />
+          <span className="text-xs text-muted-foreground mt-1 block">City or airport code</span>
+        </div>
+
+        {/* Check-In */}
+        <div className="group rounded-xl border border-line bg-surface/60 hover:border-teal/40 transition-colors p-4 focus-within:border-teal focus-within:ring-2 focus-within:ring-teal/10">
+          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5 text-teal" /> Check-In
+          </label>
+          <input
+            type="date"
+            value={checkIn}
+            onChange={(e) => setCheckIn(e.target.value)}
+            required
+            className="w-full bg-transparent border-none p-0 focus:ring-0 text-base font-semibold text-ink focus-visible:outline-none"
+          />
+        </div>
+
+        {/* Guests */}
+        <div className="group rounded-xl border border-line bg-surface/60 hover:border-teal/40 transition-colors p-4 focus-within:border-teal focus-within:ring-2 focus-within:ring-teal/10">
+          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1.5">
+            <Users className="w-3.5 h-3.5 text-teal" /> Guests
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={9}
+            value={guests}
+            onChange={(e) => setGuests(parseInt(e.target.value))}
+            required
+            className="w-full bg-transparent border-none p-0 focus:ring-0 text-base font-semibold text-ink focus-visible:outline-none"
+          />
+        </div>
       </div>
 
-      <div className="hidden md:block w-px h-10 bg-line/50 mx-1" />
-
-      <div className="flex-1 flex flex-col px-6 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl md:rounded-full transition-colors cursor-pointer group">
-        <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
-          <Calendar className="w-3.5 h-3.5" /> Check-In
-        </label>
-        <input 
-          type="date"
-          value={checkIn} 
-          onChange={(e) => setCheckIn(e.target.value)}
-          required
-          className="bg-transparent border-none p-0 focus:ring-0 text-sm font-medium text-ink focus-visible:outline-none"
-        />
-      </div>
-
-      <div className="hidden md:block w-px h-10 bg-line/50 mx-1" />
-
-      <div className="flex-1 flex flex-col px-6 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl md:rounded-full transition-colors cursor-pointer group">
-        <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
-          <Users className="w-3.5 h-3.5" /> Guests
-        </label>
-        <input 
-          type="number"
-          min={1}
-          max={9}
-          value={guests} 
-          onChange={(e) => setGuests(parseInt(e.target.value))}
-          required
-          className="bg-transparent border-none p-0 focus:ring-0 text-sm font-medium text-ink focus-visible:outline-none"
-        />
-      </div>
-
-      <div className="ml-2 pr-2 md:pr-0 mt-4 md:mt-0 w-full md:w-auto">
-        <Button type="submit" disabled={isLoading} className="w-full rounded-full px-8 h-12 bg-teal hover:bg-teal-dark text-white font-medium transition-all shadow-sm hover:shadow-md active:scale-95">
-          {isLoading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            "Search Hotels"
-          )}
-        </Button>
-      </div>
+      {/* Row 2: Submit */}
+      <Button
+        type="submit"
+        disabled={isLoading}
+        className="w-full h-13 rounded-xl bg-gradient-to-r from-teal to-teal-dark hover:from-teal-dark hover:to-teal text-white font-semibold text-[15px] transition-all shadow-md hover:shadow-lg hover:-translate-y-[1px] active:scale-[0.99] gap-2.5"
+      >
+        {isLoading ? (
+          <Loader2 className="w-5 h-5 animate-spin" />
+        ) : (
+          <>
+            <Search className="w-4.5 h-4.5" />
+            Search Hotels
+          </>
+        )}
+      </Button>
     </form>
   );
 }

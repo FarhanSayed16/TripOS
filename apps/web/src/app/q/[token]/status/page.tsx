@@ -4,8 +4,9 @@ import { use } from "react";
 import Link from "next/link";
 import { useGetPublicQuoteQuery } from "@/lib/api/publicApi";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { CheckCircle2, Clock, AlertCircle, CreditCard, Loader2 } from "lucide-react";
+import { cn } from "cn";
 
 export default function QuoteStatusPage({
   params,
@@ -30,8 +31,8 @@ export default function QuoteStatusPage({
           <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
           <h1 className="text-xl font-bold mb-2">Status unavailable</h1>
           <p className="text-muted-foreground mb-4">We could not find this quote.</p>
-          <Link href={`/q/${token}`}>
-            <Button variant="outline">Back to quote</Button>
+          <Link href={`/q/${token}`} className={cn(buttonVariants({ variant: "outline" }))}>
+            Back to quote
           </Link>
         </Card>
       </div>
@@ -86,8 +87,11 @@ export default function QuoteStatusPage({
             >
               {isFetching ? <Loader2 className="w-4 h-4 animate-spin" /> : "Refresh status"}
             </Button>
-            <Link href={`/q/${token}`} className="w-full">
-              <Button className="w-full bg-focus hover:bg-focus/90">View quote</Button>
+            <Link
+              href={`/q/${token}`}
+              className={cn(buttonVariants(), "w-full bg-focus hover:bg-focus/90")}
+            >
+              View quote
             </Link>
           </div>
         </CardContent>

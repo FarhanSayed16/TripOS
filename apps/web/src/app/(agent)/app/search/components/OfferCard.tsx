@@ -2,19 +2,20 @@ import { useDispatch, useSelector } from "react-redux";
 import { addOffer } from "@/lib/quoteSlice";
 import { RootState } from "@/lib/store";
 import { NormalizedOffer } from "@/lib/api/inventoryApi";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plane, Building2, CheckCircle2 } from "lucide-react";
+import { Plane, Building2, CheckCircle2, Clock, Luggage, ArrowRight } from "lucide-react";
 import { useI18nOptional } from "@/lib/i18n";
 
-function sourceLabel(offer: NormalizedOffer): string {
-  const mode = offer.inventory_mode || offer.raw_data?.inventory_mode;
-  const code = offer.supplier_code || "supplier";
-  const src = offer.source_type ? ` · ${offer.source_type}` : "";
-  if (mode === "live") return `${code}${src} · live`;
-  if (mode === "simulated") return `${code}${src} · simulated`;
-  if (mode === "mock") return `${code}${src} · mock`;
-  return `${code}${src}`;
+function formatDuration(mins: number): string {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function stopsLabel(stops: number | null | undefined): string {
+  if (stops == null) return "";
+  if (stops === 0) return "Non-stop";
+  return `${stops} stop${stops > 1 ? "s" : ""}`;
 }
 
 export function OfferCard({
@@ -27,8 +28,6 @@ export function OfferCard({
   const dispatch = useDispatch();
   const selectedOffers = useSelector((state: RootState) => state.quote.selectedOffers);
   const isSelected = selectedOffers.some((o) => o.id === offer.id);
-  const mode = offer.inventory_mode || offer.raw_data?.inventory_mode;
-  const isIndicativeSim = mode === "simulated";
   const { t } = useI18nOptional();
 
   const handleSelect = () => {
@@ -37,120 +36,157 @@ export function OfferCard({
     }
   };
 
+  const airlineName = offer.airline_name || offer.airline_code || "";
+  const departTime = offer.depart_time
+    ? offer.depart_time
+    : offer.segments?.[0]?.departure_at
+      ? new Date(offer.segments[0].departure_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      : null;
+
+  const priceDisplay = offer.money
+    ? `${offer.money.display_currency} ${offer.money.display_amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+    : `${offer.currency} ${offer.total_amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+
   return (
-    <Card className={`transition-all duration-300 ${isSelected ? "border-teal ring-1 ring-teal bg-teal/5" : "hover:border-focus bg-surface"}`}>
-      <CardContent className="p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-full bg-sand flex items-center justify-center flex-shrink-0">
-            {offer.type === "flight" ? (
-              <Plane className="w-6 h-6 text-focus" />
-            ) : (
-              <Building2 className="w-6 h-6 text-focus" />
-            )}
-          </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-semibold text-ink">{offer.title}</h3>
-              {offer.fare_family && (
-                <span className="text-[10px] font-medium uppercase tracking-wide px-2 py-0.5 rounded border bg-sand text-ink border-line">
-                  {offer.fare_family}
-                </span>
+    <div
+      className={`group rounded-xl border bg-surface transition-all duration-200 hover:shadow-md ${
+        isSelected
+          ? "border-teal ring-2 ring-teal/15 shadow-sm"
+          : "border-line hover:border-teal/30"
+      }`}
+    >
+      <div className="p-5 flex flex-col sm:flex-row gap-5">
+        {/* Left: Flight Info */}
+        <div className="flex-1 min-w-0">
+          {/* Row 1: Airline + Route */}
+          <div className="flex items-center gap-3 mb-3">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+              offer.type === "flight"
+                ? "bg-teal/10 text-teal"
+                : "bg-amber-100 text-amber-700"
+            }`}>
+              {offer.type === "flight" ? (
+                <Plane className="w-5 h-5" />
+              ) : (
+                <Building2 className="w-5 h-5" />
               )}
-              <span
-                className={`text-[10px] font-medium uppercase tracking-wide px-2 py-0.5 rounded border ${
-                  mode === "live"
-                    ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                    : isIndicativeSim
-                      ? "bg-amber-50 text-amber-800 border-amber-200"
-                      : "bg-surface text-muted-foreground border-line"
-                }`}
-              >
-                {sourceLabel(offer)}
-              </span>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">{offer.description}</p>
-            {offer.baggage && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Baggage
-                {offer.baggage.cabin_kg != null ? ` · cabin ${offer.baggage.cabin_kg}kg` : ""}
-                {offer.baggage.checked_kg != null
-                  ? ` · checked ${offer.baggage.checked_kg}kg`
-                  : " · no checked"}
-              </p>
-            )}
-            {(offer.duration_minutes != null || offer.stops != null) && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {offer.stops != null
-                  ? offer.stops === 0
-                    ? "Non-stop"
-                    : `${offer.stops} stop${offer.stops === 1 ? "" : "s"}`
-                  : null}
-                {offer.stops != null && offer.duration_minutes != null ? " · " : null}
-                {offer.duration_minutes != null
-                  ? `${Math.floor(offer.duration_minutes / 60)}h ${offer.duration_minutes % 60}m`
-                  : null}
-                {offer.depart_time ? ` · Departs ${offer.depart_time}` : null}
-              </p>
-            )}
-            {offer.segments && offer.segments.length > 0 && (
-              <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
-                {offer.segments.map((seg, i) => {
-                  const mkt = seg.marketing_carrier || "?";
-                  const op = seg.operating_carrier || mkt;
-                  const codeshare = op !== mkt ? ` (op ${op})` : "";
-                  return (
-                    <p key={`${seg.flight_number}-${i}`}>
-                      {seg.origin}→{seg.destination}
-                      {seg.flight_number ? ` · ${seg.flight_number}` : ""}
-                      {` · mkt ${mkt}${codeshare}`}
-                      {seg.departure_at ? ` · ${seg.departure_at}` : ""}
-                    </p>
-                  );
-                })}
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-ink text-[15px]">{airlineName || offer.title}</span>
+                {offer.fare_family && (
+                  <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-teal/10 text-teal border border-teal/20">
+                    {offer.fare_family}
+                  </span>
+                )}
               </div>
+              {airlineName && offer.title !== airlineName && (
+                <p className="text-xs text-muted-foreground truncate">{offer.title}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Row 2: Route Timeline */}
+          {offer.type === "flight" && (
+            <div className="flex items-center gap-4 mb-3 pl-1">
+              {/* Depart */}
+              <div className="text-center">
+                <div className="text-lg font-bold text-ink leading-tight">
+                  {departTime || "—"}
+                </div>
+                <div className="text-[11px] text-muted-foreground font-medium uppercase">
+                  {offer.segments?.[0]?.origin || ""}
+                </div>
+              </div>
+
+              {/* Duration line */}
+              <div className="flex-1 flex flex-col items-center gap-0.5 px-2">
+                <span className="text-[11px] text-muted-foreground font-medium">
+                  {offer.duration_minutes != null ? formatDuration(offer.duration_minutes) : ""}
+                </span>
+                <div className="w-full relative h-[2px]">
+                  <div className="absolute inset-0 bg-line rounded-full" />
+                  {offer.stops != null && offer.stops > 0 && (
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-amber-400 border-2 border-surface" />
+                  )}
+                </div>
+                <span className="text-[10px] text-muted-foreground">
+                  {stopsLabel(offer.stops)}
+                </span>
+              </div>
+
+              {/* Arrive */}
+              <div className="text-center">
+                <div className="text-lg font-bold text-ink leading-tight">
+                  {offer.segments && offer.segments.length > 0
+                    ? offer.segments[offer.segments.length - 1]?.arrival_at
+                      ? new Date(offer.segments[offer.segments.length - 1].arrival_at!).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                      : "—"
+                    : "—"}
+                </div>
+                <div className="text-[11px] text-muted-foreground font-medium uppercase">
+                  {offer.segments && offer.segments.length > 0
+                    ? offer.segments[offer.segments.length - 1]?.destination || ""
+                    : ""}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Row 3: Tags */}
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            {offer.baggage && (
+              <span className="inline-flex items-center gap-1 bg-paper border border-line rounded-md px-2 py-0.5">
+                <Luggage className="w-3 h-3" />
+                {offer.baggage.checked_kg != null
+                  ? `${offer.baggage.checked_kg}kg`
+                  : "No bag"}
+              </span>
             )}
             {offer.deal_code && (
-              <span className="inline-block mt-2 text-[10px] font-semibold bg-teal-100 text-teal-800 px-2 py-0.5 rounded border border-teal-200 uppercase tracking-wide">
+              <span className="inline-flex items-center gap-1 bg-teal/10 text-teal border border-teal/20 rounded-md px-2 py-0.5 font-semibold uppercase">
                 Deal: {offer.deal_code}
               </span>
             )}
-            <p className="text-xs text-muted-foreground/60 mt-2 font-mono">Ref: {offer.supplier_reference}</p>
+            {offer.description && !airlineName && (
+              <span className="text-muted-foreground">{offer.description}</span>
+            )}
           </div>
         </div>
 
-        <div className="flex flex-col items-end gap-2 shrink-0">
+        {/* Right: Price + Action */}
+        <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-3 shrink-0 sm:min-w-[140px] sm:pl-5 sm:border-l sm:border-line">
           <div className="text-right">
-            <div className="text-xl font-bold text-ink font-mono tracking-tight">
-              {offer.money
-                ? `${offer.money.display_currency} ${offer.money.display_amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-                : `${offer.currency} ${offer.total_amount.toLocaleString()}`}
+            <div className="text-2xl font-bold text-ink font-mono tracking-tight leading-tight">
+              {priceDisplay}
             </div>
             {offer.money &&
               offer.money.display_currency !== offer.money.currency && (
-                <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center justify-end gap-1">
-                  <span>Charge:</span>
-                  <span className="font-mono">
-                    {offer.money.currency} {offer.money.amount.toLocaleString()}
-                  </span>
+                <div className="text-[11px] text-muted-foreground mt-0.5 font-mono">
+                  Charge: {offer.money.currency} {offer.money.amount.toLocaleString()}
                 </div>
               )}
+            <div className="text-[10px] text-muted-foreground/50 mt-0.5">per person</div>
           </div>
           <Button
             onClick={handleSelect}
-            variant={isSelected ? "secondary" : "default"}
+            variant={isSelected ? "secondary" : "gradient"}
             disabled={isSelected}
-            className="w-full sm:w-auto transition-all"
+            size="sm"
+            className={`transition-all w-full sm:w-auto ${isSelected ? "" : "shadow-sm"}`}
           >
             {isSelected ? (
               <>
-                <CheckCircle2 className="w-4 h-4 mr-2" /> {t("search.selected")}
+                <CheckCircle2 className="w-4 h-4 mr-1.5" /> {t("search.selected")}
               </>
             ) : (
-              t("search.addToQuote")
+              <>
+                {t("search.addToQuote")} <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              </>
             )}
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

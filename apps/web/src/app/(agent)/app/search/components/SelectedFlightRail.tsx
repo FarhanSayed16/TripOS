@@ -1,8 +1,9 @@
 import { NormalizedOffer } from "@/lib/api/inventoryApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Plane, ShoppingCart, Clock, Briefcase, Info, ChevronRight, Check } from "lucide-react";
 import Link from "next/link";
+import { cn } from "cn";
 
 export function SelectedFlightRail({ offers }: { offers: NormalizedOffer[] }) {
   if (!offers || offers.length === 0) {
@@ -97,14 +98,18 @@ export function SelectedFlightRail({ offers }: { offers: NormalizedOffer[] }) {
             ) : null}
           </div>
 
-          <Link href="/app/quotes/new" className="block">
-            <Button variant="gradient" size="lg" className="w-full justify-between group h-12 shadow-md">
-              <span className="flex items-center gap-2">
-                <ShoppingCart className="w-4 h-4" />
-                Continue to quote
-              </span>
-              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </Button>
+          <Link
+            href="/app/quotes/new"
+            className={cn(
+              buttonVariants({ variant: "gradient", size: "lg" }),
+              "w-full justify-between group h-12 shadow-md"
+            )}
+          >
+            <span className="flex items-center gap-2">
+              <ShoppingCart className="w-4 h-4" />
+              Continue to quote
+            </span>
+            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>
         </CardContent>
       </Card>

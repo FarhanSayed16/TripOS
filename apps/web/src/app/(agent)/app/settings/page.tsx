@@ -380,16 +380,16 @@ export default function SettingsPage() {
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-ink">Maximum Stops</label>
-                      <select className="w-full border border-line rounded-md h-10 px-3 bg-surface text-sm">
+                      <select defaultValue="Up to 2 stops" className="w-full border border-line rounded-md h-10 px-3 bg-surface text-sm">
                         <option>Direct flights only</option>
                         <option>Up to 1 stop</option>
-                        <option selected>Up to 2 stops</option>
+                        <option>Up to 2 stops</option>
                       </select>
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-ink">Default Cabin Class</label>
-                      <select className="w-full border border-line rounded-md h-10 px-3 bg-surface text-sm">
-                        <option selected>Economy</option>
+                      <select defaultValue="Economy" className="w-full border border-line rounded-md h-10 px-3 bg-surface text-sm">
+                        <option>Economy</option>
                         <option>Premium Economy</option>
                         <option>Business</option>
                       </select>

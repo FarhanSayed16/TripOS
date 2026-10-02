@@ -2,13 +2,14 @@
 
 import { useGetPublicQuoteQuery, useGetThemeQuery } from "@/lib/api/publicApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { format } from "date-fns";
 import { hi as hiLocale, enIN } from "date-fns/locale";
 import { Plane, Hotel, CheckCircle2, AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { formatMoney, formatPaiseAsMoney, fxFootnote } from "@/lib/money";
 import { I18nProvider, normalizeLocale, useI18n } from "@/lib/i18n";
+import { cn } from "cn";
 
 function PublicQuoteInner({ token }: { token: string }) {
   const { t, locale, dateLocale, setLocale } = useI18n();
@@ -208,14 +209,19 @@ function PublicQuoteInner({ token }: { token: string }) {
 
             <div className="hidden md:block">
               {quote.payment_link_url ? (
-                <a href={quote.payment_link_url} target="_blank" rel="noopener noreferrer">
-                  <Button
-                    className="w-full h-14 text-lg text-white transition-opacity hover:opacity-90"
-                    style={buttonStyle}
-                    disabled={isExpired}
-                  >
-                    {t("publicQuote.proceedPayment")}
-                  </Button>
+                <a
+                  href={quote.payment_link_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    buttonVariants({ size: "lg" }),
+                    "w-full h-14 text-lg text-white transition-opacity hover:opacity-90",
+                    isExpired && "pointer-events-none opacity-50"
+                  )}
+                  style={buttonStyle}
+                  aria-disabled={isExpired}
+                >
+                  {t("publicQuote.proceedPayment")}
                 </a>
               ) : (
                 <Button className="w-full h-14 text-lg text-white" style={buttonStyle} disabled>
@@ -241,14 +247,19 @@ function PublicQuoteInner({ token }: { token: string }) {
           <span className="text-xl font-bold text-ink">{totalLabel}</span>
         </div>
         {quote.payment_link_url ? (
-          <a href={quote.payment_link_url} target="_blank" rel="noopener noreferrer">
-            <Button
-              className="w-full h-12 text-base text-white transition-opacity hover:opacity-90"
-              style={buttonStyle}
-              disabled={isExpired}
-            >
-              {t("publicQuote.proceedPayment")}
-            </Button>
+          <a
+            href={quote.payment_link_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              buttonVariants(),
+              "w-full h-12 text-base text-white transition-opacity hover:opacity-90",
+              isExpired && "pointer-events-none opacity-50"
+            )}
+            style={buttonStyle}
+            aria-disabled={isExpired}
+          >
+            {t("publicQuote.proceedPayment")}
           </a>
         ) : (
           <Button className="w-full h-12 text-base text-white" style={buttonStyle} disabled>
