@@ -9,3 +9,4 @@ from .wallet import *
 from .fx import *
 from .servicing import *
 from .partner import *
+from .notification import *

@@ -136,6 +136,22 @@ async def _upsert_failed_booking(
         )
 
     try:
+        from app.services.notifications import create_notification
+        await create_notification(
+            db,
+            organization_id=quote.organization_id,
+            type="booking_failed",
+            title=f"Booking failed for Quote {str(quote.id)[:8]}",
+            body=f"Reason: {reason.value}. Check the booking details for next steps.",
+            icon="alert-triangle",
+            severity="error",
+            link=f"/app/quotes/{quote.id}",
+            metadata={"quote_id": str(quote.id), "reason": reason.value},
+        )
+    except Exception as e:
+        logger.warning("notification_create_failed", error=str(e))
+
+    try:
         from app.services.partner_webhooks import dispatch_partner_event
 
         await dispatch_partner_event(
@@ -432,6 +448,21 @@ async def handle_booking_confirm(payload: dict, db: AsyncSession):
     await _notify_agent_booking(
         db, quote, confirmed=True, pnr=primary_pnr
     )
+    try:
+        from app.services.notifications import create_notification
+        await create_notification(
+            db,
+            organization_id=quote.organization_id,
+            type="booking_confirmed",
+            title=f"Booking confirmed — PNR {primary_pnr or '—'}",
+            body=f"Quote {str(quote.id)[:8]} has been confirmed successfully.",
+            icon="check-circle",
+            severity="success",
+            link="/app/bookings",
+            metadata={"quote_id": str(quote.id), "pnr": primary_pnr},
+        )
+    except Exception as e:
+        logger.warning("notification_create_failed", error=str(e))
     try:
         from app.services.partner_webhooks import dispatch_partner_event
 
