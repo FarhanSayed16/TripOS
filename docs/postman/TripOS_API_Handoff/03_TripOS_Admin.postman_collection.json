@@ -1,0 +1,461 @@
+{
+  "info": {
+    "name": "03 TripOS Admin API",
+    "description": "Platform admin only (is_platform_admin). Login with admin@tripos.in first \u2014 sets adminAccessToken.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 Login",
+      "item": [
+        {
+          "name": "Login platform admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/auth/login",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 2xx', function () {",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});",
+                  "const j = pm.response.json();",
+                  "pm.environment.set('adminAccessToken', j.access_token);",
+                  "pm.environment.set('accessToken', j.access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm platform admin",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/auth/me",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 2xx', function () {",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});",
+                  "pm.expect(pm.response.json().is_platform_admin).to.eql(true);",
+                  "const j = pm.response.json();",
+                  "if (j.active_organization_id) pm.environment.set('organizationId', j.active_organization_id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 Analytics & L2B",
+      "item": [
+        {
+          "name": "GET /admin/analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/admin/analytics",
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /admin/l2b",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/admin/l2b",
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /admin/l2b/survival",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/admin/l2b/survival",
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /admin/l2b/orgs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/admin/l2b/orgs",
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /admin/dead-letters",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/admin/dead-letters",
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Organizations",
+      "item": [
+        {
+          "name": "GET /admin/organizations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/admin/organizations",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 2xx', function () {",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /admin/organizations/{id}/approve",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/admin/organizations/{{organizationId}}/approve",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Bookings Payments Refunds",
+      "item": [
+        {
+          "name": "GET /admin/bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/admin/bookings",
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /admin/payments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/admin/payments",
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /admin/refunds",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/admin/refunds",
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /admin/commissions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/admin/commissions",
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /admin/commission-rules",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/admin/commission-rules",
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /admin/audit/export",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/admin/audit/export",
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Suppliers & FX",
+      "item": [
+        {
+          "name": "GET /admin/suppliers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/admin/suppliers",
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /admin/suppliers/health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/admin/suppliers/health",
+            "description": ""
+          }
+        },
+        {
+          "name": "POST /admin/suppliers/mock_supplier/toggle",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/admin/suppliers/mock_supplier/toggle",
+            "description": "Toggles circuit breaker \u2014 re-run to restore.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "GET /admin/fx-rates",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/admin/fx-rates",
+            "description": ""
+          }
+        },
+        {
+          "name": "POST /admin/fx-rates/seed",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/admin/fx-rates/seed",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Partners",
+      "item": [
+        {
+          "name": "GET /admin/partners",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/admin/partners",
+            "description": ""
+          }
+        },
+        {
+          "name": "POST /admin/partners",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/admin/partners",
+            "description": "Requires FC_PARTNER_API_ENABLED=true to use the key afterward. api_key returned once.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"organization_id\": \"{{organizationId}}\",\n  \"name\": \"Postman Sandbox Partner\",\n  \"env\": \"test\",\n  \"webhook_url\": null\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 2xx', function () {",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});",
+                  "const j = pm.response.json();",
+                  "if (j.id) pm.environment.set('partnerAppId', j.id);",
+                  "if (j.api_key) {",
+                  "  pm.environment.set('partnerApiKey', j.api_key);",
+                  "  console.log('SAVE api_key now \u2014 shown once:', j.api_key);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /admin/partners/{id}/usage",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/admin/partners/{{partnerAppId}}/usage",
+            "description": ""
+          }
+        }
+      ]
+    }
+  ]
+}

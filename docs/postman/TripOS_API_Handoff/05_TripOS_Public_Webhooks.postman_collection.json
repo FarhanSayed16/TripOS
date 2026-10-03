@@ -1,0 +1,86 @@
+{
+  "info": {
+    "name": "05 TripOS Public & Webhooks",
+    "description": "No agent JWT for public quote. Webhooks: unsigned OK only when PAYMENTS_MODE=mock and no webhook secret.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 Public",
+      "item": [
+        {
+          "name": "GET /public/quotes/{token}",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{apiBase}}/public/quotes/{{publicToken}}",
+            "description": "Set publicToken from Happy Path or quote create."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 2xx', function () {",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /public/theme/{domain}",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{apiBase}}/public/theme/localhost",
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Webhooks",
+      "item": [
+        {
+          "name": "POST /webhooks/razorpay (mock unsigned)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/webhooks/razorpay",
+            "description": "Shape may need tuning vs RazorpayWebhookPayload \u2014 prefer mark-paid-offline for demos.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"payment_link.paid\",\n  \"payload\": {\n    \"payment_link\": {\n      \"entity\": {\n        \"id\": \"plink_mock\",\n        \"reference_id\": \"{{quoteId}}\",\n        \"status\": \"paid\"\n      }\n    },\n    \"payment\": {\n      \"entity\": {\n        \"id\": \"pay_mock\",\n        \"amount\": 10000,\n        \"currency\": \"INR\",\n        \"status\": \"captured\"\n      }\n    }\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /webhooks/schedule-change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/webhooks/schedule-change",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplier_code\": \"mock_supplier\",\n  \"supplier_pnr\": \"MOCK-PNR\",\n  \"change_type\": \"time_change\",\n  \"payload\": { \"note\": \"Postman demo\" }\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

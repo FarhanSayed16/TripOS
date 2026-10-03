@@ -1,0 +1,142 @@
+{
+  "info": {
+    "name": "TripOS Partner API (FC Phase 8)",
+    "description": "Sandbox collection for /api/v1/partner. Set collection vars: baseUrl, apiKey.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000/api/v1" },
+    { "key": "apiKey", "value": "tp_test_REPLACE" },
+    { "key": "quoteId", "value": "" },
+    { "key": "customerId", "value": "" },
+    { "key": "searchRequestId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Me",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "X-API-Key", "value": "{{apiKey}}" }],
+        "url": "{{baseUrl}}/partner/me"
+      }
+    },
+    {
+      "name": "Search flights",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "if (j.search_request_id) pm.collectionVariables.set('searchRequestId', j.search_request_id);",
+              "if (j.offers && j.offers[0]) pm.collectionVariables.set('offerJson', JSON.stringify(j.offers[0]));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "X-API-Key", "value": "{{apiKey}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"flight\",\n  \"origin\": \"DEL\",\n  \"destination\": \"BOM\",\n  \"departure_date\": \"2026-11-15\",\n  \"passengers\": { \"adults\": 1, \"children\": 0, \"infants\": 0 }\n}"
+        },
+        "url": "{{baseUrl}}/partner/search/flights"
+      }
+    },
+    {
+      "name": "Create customer",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "if (j.id) pm.collectionVariables.set('customerId', j.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "X-API-Key", "value": "{{apiKey}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"first_name\": \"Ada\",\n  \"last_name\": \"Lovelace\",\n  \"phone\": \"+919876543210\",\n  \"email\": \"ada@example.com\"\n}"
+        },
+        "url": "{{baseUrl}}/partner/customers"
+      }
+    },
+    {
+      "name": "Create quote",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "if (j.id) pm.collectionVariables.set('quoteId', j.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "X-API-Key", "value": "{{apiKey}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customer_id\": \"{{customerId}}\",\n  \"items\": [\n    {\n      \"search_request_id\": \"{{searchRequestId}}\",\n      \"offer\": {{offerJson}},\n      \"agent_markup\": 0\n    }\n  ]\n}"
+        },
+        "url": "{{baseUrl}}/partner/quotes"
+      }
+    },
+    {
+      "name": "Set passengers",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "X-API-Key", "value": "{{apiKey}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "[\n  {\n    \"first_name\": \"Ada\",\n    \"last_name\": \"Lovelace\",\n    \"date_of_birth\": \"1990-01-01\"\n  }\n]"
+        },
+        "url": "{{baseUrl}}/partner/quotes/{{quoteId}}/passengers"
+      }
+    },
+    {
+      "name": "Mark ready",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "X-API-Key", "value": "{{apiKey}}" }],
+        "url": "{{baseUrl}}/partner/quotes/{{quoteId}}/ready"
+      }
+    },
+    {
+      "name": "Create pay link",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "X-API-Key", "value": "{{apiKey}}" }],
+        "url": "{{baseUrl}}/partner/quotes/{{quoteId}}/pay-link"
+      }
+    },
+    {
+      "name": "Booking status",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "X-API-Key", "value": "{{apiKey}}" }],
+        "url": "{{baseUrl}}/partner/quotes/{{quoteId}}/booking"
+      }
+    }
+  ]
+}
