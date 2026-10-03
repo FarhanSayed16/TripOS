@@ -1,0 +1,1215 @@
+{
+  "info": {
+    "name": "01 TripOS Core Agent API",
+    "description": "Full agent-facing API surface. Set TripOS Local environment. Login first (or use Happy Path).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 2xx', function () {",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /ready",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/ready",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 2xx', function () {",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 Auth",
+      "item": [
+        {
+          "name": "POST /auth/signup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/auth/signup",
+            "description": "May require email verify depending on env.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"new.agent@example.com\",\n  \"password\": \"password123\",\n  \"first_name\": \"New\",\n  \"last_name\": \"Agent\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /auth/login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/auth/login",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{agentEmail}}\",\n  \"password\": \"{{agentPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 2xx', function () {",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});",
+                  "const j = pm.response.json();",
+                  "pm.environment.set('accessToken', j.access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /auth/me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/auth/me",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 2xx', function () {",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH /auth/me",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/auth/me",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"preferred_currency\": \"INR\",\n  \"locale\": \"en\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 2xx', function () {",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/forgot-password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/auth/forgot-password",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{agentEmail}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /auth/logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/auth/logout",
+            "description": "Clears refresh cookie. Re-login after.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Organization",
+      "item": [
+        {
+          "name": "GET /organizations/me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/organizations/me",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 2xx', function () {",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH /organizations/me",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/organizations/me",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brand_name\": \"Demo Travels\",\n  \"preferred_currency\": \"INR\",\n  \"default_locale\": \"en\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /organizations/members",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/organizations/members",
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /organizations/network",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/organizations/network",
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /organizations/me/white-label-checklist",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/organizations/me/white-label-checklist",
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Customers",
+      "item": [
+        {
+          "name": "POST /customers",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/customers",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Riya\",\n  \"last_name\": \"Shah\",\n  \"phone\": \"+919811122233\",\n  \"email\": \"riya@example.com\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 2xx', function () {",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});",
+                  "pm.environment.set('customerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /customers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/customers",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 2xx', function () {",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /customers/{id}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/customers/{{customerId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 2xx', function () {",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH /customers/{id}",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/customers/{{customerId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Riya\",\n  \"last_name\": \"Shah\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /customers/{id}/timeline",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/customers/{{customerId}}/timeline",
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Inventory",
+      "item": [
+        {
+          "name": "POST /inventory/search/flights",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/inventory/search/flights",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"flight\",\n  \"origin\": \"DEL\",\n  \"destination\": \"BOM\",\n  \"departure_date\": \"2026-11-15\",\n  \"passengers\": { \"adults\": 1, \"children\": 0, \"infants\": 0 }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 2xx', function () {",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});",
+                  "const j = pm.response.json();",
+                  "pm.environment.set('searchRequestId', j.search_request_id);",
+                  "if (j.offers[0]) pm.environment.set('offerJson', JSON.stringify(j.offers[0]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /inventory/search/hotels",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/inventory/search/hotels",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"hotel\",\n  \"origin\": \"BOM\",\n  \"destination\": \"BOM\",\n  \"departure_date\": \"2026-11-20\",\n  \"return_date\": \"2026-11-22\",\n  \"passengers\": { \"adults\": 2, \"children\": 0, \"infants\": 0 }\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /inventory/revalidate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/inventory/revalidate",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"offer\": {{offerJson}}\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /inventory/fare-rules",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/inventory/fare-rules",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"offer\": {{offerJson}}\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /inventory/ancillaries",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/inventory/ancillaries",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"offer\": {{offerJson}}\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /inventory/seat-map",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/inventory/seat-map",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"offer\": {{offerJson}}\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Quotes",
+      "item": [
+        {
+          "name": "POST /quotes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/quotes",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": \"{{customerId}}\",\n  \"items\": [{\n    \"search_request_id\": \"{{searchRequestId}}\",\n    \"offer\": {{offerJson}},\n    \"agent_markup\": 50000\n  }]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 2xx', function () {",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});",
+                  "const j = pm.response.json();",
+                  "pm.environment.set('quoteId', j.id);",
+                  "pm.environment.set('publicToken', j.public_token);",
+                  "if (j.items[0]) pm.environment.set('quoteItemId', j.items[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /quotes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/quotes",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 2xx', function () {",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /quotes/{id}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/quotes/{{quoteId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 2xx', function () {",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /quotes/{id}/passengers",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/quotes/{{quoteId}}/passengers",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "[{\"first_name\":\"Riya\",\"last_name\":\"Shah\",\"date_of_birth\":\"1992-05-01\"}]"
+            }
+          }
+        },
+        {
+          "name": "POST /quotes/{id}/ready",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/quotes/{{quoteId}}/ready",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "GET /quotes/{id}/whatsapp-preview",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/quotes/{{quoteId}}/whatsapp-preview",
+            "description": ""
+          }
+        },
+        {
+          "name": "POST /quotes/{id}/send",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/quotes/{{quoteId}}/send",
+            "description": "Marks quote sent (WhatsApp preview flow).",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /quotes/{id}/payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/quotes/{{quoteId}}/payment",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /quotes/{id}/refresh",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/quotes/{{quoteId}}/refresh",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /quotes/{id}/mark-paid-offline",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/quotes/{{quoteId}}/mark-paid-offline",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "GET /quotes/{id}/fare-rules",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/quotes/{{quoteId}}/fare-rules",
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /quotes/{id}/refunds",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/quotes/{{quoteId}}/refunds",
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /quotes/{id}/audit",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/quotes/{{quoteId}}/audit",
+            "description": ""
+          }
+        },
+        {
+          "name": "PUT /quotes/{id}/items/{itemId}/extras",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/quotes/{{quoteId}}/items/{{quoteItemId}}/extras",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"extras\": []\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /quotes/{id}/cancel",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/quotes/{{quoteId}}/cancel",
+            "description": "Destructive \u2014 use on a disposable quote.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Bookings",
+      "item": [
+        {
+          "name": "GET /bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/bookings",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 2xx', function () {",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /bookings/{id}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/bookings/{{bookingId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /bookings/export/csv",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/bookings/export/csv",
+            "description": ""
+          }
+        },
+        {
+          "name": "POST /bookings/{id}/changes/quote",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/bookings/{{bookingId}}/changes/quote",
+            "description": "May return mock-reissue honesty fields.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"change_type\": \"date_change\",\n  \"request_payload\": { \"new_date\": \"2026-12-01\" },\n  \"notes\": \"Postman demo change quote\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /bookings/{id}/changes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/bookings/{{bookingId}}/changes",
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 Payments & Wallet",
+      "item": [
+        {
+          "name": "GET /payments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/payments",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 2xx', function () {",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /wallet/summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/wallet/summary",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 2xx', function () {",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /wallet/ledger",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/wallet/ledger",
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /wallet/ledger/export",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/wallet/ledger/export",
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 Packages",
+      "item": [
+        {
+          "name": "GET /packages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/packages",
+            "description": ""
+          }
+        },
+        {
+          "name": "POST /packages",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/packages",
+            "description": "Org-admin required.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Goa Weekend\",\n  \"description\": \"3N demo package\",\n  \"destination\": \"Goa\",\n  \"duration_days\": 3,\n  \"base_price_paise\": 1500000,\n  \"items\": []\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 Followups & Notifications & AI",
+      "item": [
+        {
+          "name": "GET /followups",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/followups",
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/notifications",
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /notifications/unread-count",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{apiBase}}/notifications/unread-count",
+            "description": ""
+          }
+        },
+        {
+          "name": "POST /ai/parse-intent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{apiBase}}/ai/parse-intent",
+            "description": "Requires AI_COPILOT_ENABLED=true.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Flight DEL to BOM next Friday for 1 adult\"\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
