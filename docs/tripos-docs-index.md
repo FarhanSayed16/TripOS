@@ -59,6 +59,7 @@ All earlier docs remain valid **detail references**. If anything conflicts, **Ma
 | **`wallet-commission-formula.md`** | Ledger / hierarchy BPS | Phase 33/38 |
 | **`multi-supplier-honesty.md`** | Failover + simulated TBO | Phase 36 |
 | **`monthly-review-2026-09.md`** | First Phase 40 monthly review | Cadence |
+| **`team/`** | **Team pack (8 docs):** project, technical, architecture, impact, actions/solutions, product working, system, API — by Farhan Sayed | **Leadership / reviewer handoff** |
 | **`agent-quickstart.md`** | Agent 1-pager | Pilot training |
 | **`pilot-demo-script.md`** | 15–20 min demo outline | Live demos |
 | **`pilot-support-channel.md`** | WhatsApp support norms | Pilot ops |
