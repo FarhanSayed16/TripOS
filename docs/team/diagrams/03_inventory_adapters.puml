@@ -1,0 +1,55 @@
+@startuml TripOS_Inventory_Adapters
+!theme plain
+skinparam shadowing false
+skinparam backgroundColor #FEFEFE
+skinparam componentStyle rectangle
+
+title TripOS — Inventory Adapters & L2B Cache
+
+package "API services" {
+  [InventoryService] as Inv
+  [L2B / meters] as L2B
+  [Quote / Pay services] as Commerce
+}
+
+package "Strategy" {
+  [SupplierStrategy\nall | primary_only | failover] as Strat
+}
+
+package "Adapters (BaseAdapter)" {
+  [mock_supplier] as Mock
+  [tbo\nsim or live] as TBO
+}
+
+cloud "Supplier HTTP" {
+  [TBO Holidays API] as TboHttp
+}
+
+database "Redis" as Redis
+database "Postgres\n(quotes / L2B counters)" as DB
+
+Inv --> Strat : search / revalidate / book
+Strat --> Mock
+Strat --> TBO
+TBO --> TboHttp : only when\nTBO_LIVE_ENABLED
+
+Inv --> Redis : shopping cache\n(browse)
+L2B --> Redis
+L2B --> DB
+Commerce --> Inv : **live revalidate**\nbefore pay / book
+Inv --> DB : OfferSnapshot\non quote create
+
+note right of Redis
+  Browse may be cached
+  (indicative pricing).
+  Pay and book always
+  revalidate.
+end note
+
+note bottom of TBO
+  FC Phase 3 waiver:
+  primary live = TBO.
+  Second live feed deferred.
+end note
+
+@enduml

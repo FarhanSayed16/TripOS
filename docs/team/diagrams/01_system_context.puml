@@ -1,0 +1,45 @@
+@startuml TripOS_System_Context
+!theme plain
+skinparam shadowing false
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontName Segoe UI
+skinparam componentStyle rectangle
+skinparam ArrowColor #1a3a3a
+skinparam packageBorderColor #1a3a3a
+
+title TripOS — System Context
+
+actor "Travel Agent" as Agent
+actor "Platform Admin" as Admin
+actor "Customer" as Customer
+actor "Partner App" as Partner
+
+rectangle "TripOS" {
+  component "Web\n(Next.js)" as Web
+  component "API\n(FastAPI)" as API
+  component "Worker\n(outbox)" as Worker
+  database "PostgreSQL" as DB
+  database "Redis" as Redis
+}
+
+cloud "External" {
+  component "TBO\n(sandbox/live)" as TBO
+  component "Razorpay\n(or mock)" as Pay
+  component "Email\n(Resend)" as Email
+}
+
+Agent --> Web : browse / quote / CRM
+Admin --> Web : L2B / orgs / ops
+Customer --> Web : public quote /q/{token}
+Partner --> API : X-API-Key\n/api/v1/partner/*
+
+Web --> API : /api/v1/*
+API --> DB
+API --> Redis : shopping cache / meters
+API --> TBO : adapter (when live)
+API --> Pay : pay links / webhooks
+API --> Email : verify / reset
+Worker --> DB : drain outbox
+Worker --> TBO : book / cancel
+
+@enduml

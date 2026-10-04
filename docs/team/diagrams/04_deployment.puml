@@ -1,0 +1,64 @@
+@startuml TripOS_Deployment
+!theme plain
+skinparam shadowing false
+skinparam backgroundColor #FEFEFE
+skinparam node {
+  BackgroundColor #F7FAF9
+  BorderColor #1a3a3a
+}
+skinparam database {
+  BackgroundColor #EEF6F4
+  BorderColor #1a3a3a
+}
+
+title TripOS — Runtime / Deployment Topology
+
+node "Local (dev)" as Local {
+  node "apps/web\n:3000" as LocalWeb
+  node "apps/api\nuvicorn :8000" as LocalAPI
+  node "worker.py" as LocalWorker
+  database "Postgres\n:5433" as LocalDB
+  database "Redis\n:6380" as LocalRedis
+}
+
+cloud "Hosted (target)" as Hosted {
+  node "Vercel\nNext.js" as Vercel
+  node "Render Web\nFastAPI" as RenderAPI
+  node "Render Background\nWorker" as RenderWorker
+  database "Managed Postgres" as HostedDB
+  database "Managed Redis\n/ Upstash" as HostedRedis
+}
+
+cloud "Externals" {
+  [TBO]
+  [Razorpay]
+  [Resend]
+  [S3/R2 docs]
+}
+
+LocalWeb --> LocalAPI
+LocalAPI --> LocalDB
+LocalAPI --> LocalRedis
+LocalWorker --> LocalDB
+LocalAPI ..> TBO
+LocalAPI ..> Razorpay
+
+Vercel --> RenderAPI
+RenderAPI --> HostedDB
+RenderAPI --> HostedRedis
+RenderWorker --> HostedDB
+RenderAPI --> TBO
+RenderAPI --> Razorpay
+RenderAPI --> Resend
+RenderAPI --> [S3/R2 docs]
+
+note bottom of Local
+  docker compose up -d
+  for Postgres + Redis
+end note
+
+note bottom of Hosted
+  See docs/ops RENDER + VERCEL runbooks
+end note
+
+@enduml

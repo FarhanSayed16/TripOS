@@ -1,0 +1,55 @@
+@startuml TripOS_Money_Path
+!theme plain
+skinparam shadowing false
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowThickness 1.5
+skinparam ParticipantPadding 8
+
+title TripOS — Quote → Pay → Book (Money Path)
+
+actor Agent
+participant "Web" as Web
+participant "API" as API
+participant "Redis\n(cache)" as Redis
+participant "Adapter\n(mock|TBO)" as Adapter
+database "Postgres" as DB
+participant "Worker" as Worker
+actor Customer
+participant "Razorpay\n/ mock" as Pay
+
+== Search (browse may be indicative) ==
+Agent -> Web : Search flights
+Web -> API : POST /inventory/search/flights
+API -> Redis : cache hit?
+alt cache miss / live path
+  API -> Adapter : search()
+  Adapter --> API : NormalizedOffer[]
+  API -> Redis : store shopping cache
+end
+API --> Web : offers + inventory_mode
+
+== Quote ==
+Agent -> Web : Create quote + markup + pax
+Web -> API : POST /quotes\nPUT passengers\nPOST ready / send
+API -> DB : OfferSnapshot + quote
+API --> Web : public_token / wa.me link
+
+== Pay (always revalidate) ==
+Customer -> Web : Open /q/{token}
+Web -> API : GET /public/quotes/{token}
+Agent -> Web : Create pay link\n(or customer pays)
+Web -> API : POST /quotes/{id}/payment
+API -> Adapter : revalidate() **live**
+API -> Pay : create order / link
+Pay --> Customer : pay
+Pay -> API : webhook\n(or mark-paid-offline)
+API -> DB : quote paid + outbox job
+
+== Confirm (async) ==
+Worker -> DB : claim outbox
+Worker -> Adapter : revalidate() + book()
+Adapter --> Worker : PNR / booking ref
+Worker -> DB : Booking confirmed
+Agent -> Web : See booking / attention desk
+
+@enduml
